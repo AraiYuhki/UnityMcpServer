@@ -1,0 +1,26 @@
+{
+    "name": "jp.xeon.unity-mcp-server",
+    "version": "1.0.0",
+    "displayName": "Unity MCP Server",
+    "description": "Unity Editor上で動作するMCPサーバー。外部アプリケーションからHTTPリクエストを通じてUnity Editorの機能を呼び出すことができます。",
+    "license": "MIT OR Apache-2.0",
+    "unity": "6000.0",
+    "author": {
+        "name": "Xeon",
+        "email": "xeon.lagunas@gmail.com",
+        "url": "https://github.com/AraiYuhki"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/AraiYuhki/UnityMcpServer.git"
+    },
+    "keywords": [
+        "mcp",
+        "server",
+        "http",
+        "automation",
+        "testing",
+        "ai"
+    ],
+    "documentationUrl": "https://github.com/AraiYuhki/UnityMcpServer#readme"
+}
