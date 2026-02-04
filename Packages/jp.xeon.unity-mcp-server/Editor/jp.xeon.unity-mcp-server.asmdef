@@ -1,6 +1,6 @@
 {
     "name": "jp.xeon.unity-mcp-server",
-    "rootNamespace": "",
+    "rootNamespace": "UnityMcp",
     "references": [
         "GUID:0acc523941302664db1f4e527237feb3"
     ],

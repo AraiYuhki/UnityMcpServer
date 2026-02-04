@@ -16,6 +16,18 @@ namespace UnityMcp
     {
         private static HttpListener listener;
         private static Thread thread;
+        
+        /// <summary>
+        /// MCPサーバーをリスタートする
+        /// </summary>
+        [MenuItem("Tools/Restart MCP Server")]
+        public static void Restart()
+        {
+            EditorApplication.quitting -= Stop;
+            Stop();
+            Start();
+            EditorApplication.quitting += Stop;
+        }
 
         static McpServer()
         {
