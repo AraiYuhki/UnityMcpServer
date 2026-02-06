@@ -12,6 +12,7 @@ namespace UnityMcp
     {
         public string Name { get; }
         public string Description { get; }
+        public string InputSchema { get; } = "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
 
         private TestMode testMode;
 

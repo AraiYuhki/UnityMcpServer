@@ -56,16 +56,28 @@ namespace UnityMcp
         }
 
         /// <summary>
-        /// リクエストに応じたツールを実行する
+        /// 登録されたツールのリストを取得する
         /// </summary>
-        /// <param name="request">MCPリクエスト</param>
+        /// <returns>登録済みツールの読み取り専用リスト</returns>
+        public static IReadOnlyList<IMcpTool> GetToolList()
+        {
+            return new List<IMcpTool>(toolList.Values);
+        }
+
+        /// <summary>
+        /// 指定されたツールを実行する
+        /// </summary>
+        /// <param name="toolName">実行するツール名</param>
+        /// <param name="arguments">ツールに渡す引数（JSON文字列）</param>
         /// <returns>ツールの実行結果</returns>
         /// <exception cref="InvalidOperationException">指定されたツールが見つからない場合</exception>
-        public static async Task<object> Execute(McpRequest request)
+        public static async Task<object> Execute(string toolName, string arguments)
         {
-            if (!toolList.TryGetValue(request.tool, out var tool))
-                throw new InvalidOperationException($"Unknown tool: {request.tool}");
-            return await tool.Execute(request.arguments);
+            if (!toolList.TryGetValue(toolName, out var tool))
+            {
+                throw new InvalidOperationException($"Unknown tool: {toolName}");
+            }
+            return await tool.Execute(arguments);
         }
 
         /// <summary>
