@@ -41,29 +41,36 @@ namespace UnityMcp
         /// </summary>
         private static void Start()
         {
-            // 設定アセットからポート番号を取得（見つからない場合はデフォルト7000）
-            var guids = AssetDatabase.FindAssets($"t:{nameof(McpServerSetting)}");
-            var port = 7000;
-            if (guids is { Length: > 0 })
+            try
             {
-                var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                var setting = AssetDatabase.LoadAssetAtPath<McpServerSetting>(path);
-                if (setting != null)
-                    port = setting.Port;
+                // 設定アセットからポート番号を取得（見つからない場合はデフォルト7000）
+                var guids = AssetDatabase.FindAssets($"t:{nameof(McpServerSetting)}");
+                var port = 7000;
+                if (guids is { Length: > 0 })
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    var setting = AssetDatabase.LoadAssetAtPath<McpServerSetting>(path);
+                    if (setting != null)
+                        port = setting.Port;
+                }
+
+                McpToolRouter.Initialize();
+
+                listener = new HttpListener();
+                listener.Prefixes.Add($"http://localhost:{port}/mcp/");
+                listener.Start();
+
+                // バックグラウンドスレッドでリクエストを待ち受ける
+                thread = new Thread(ListenLoop);
+                thread.IsBackground = true;
+                thread.Start();
+
+                Debug.Log($"[MCP] Server started on http://localhost:{port}/mcp/");
             }
-
-            McpToolRouter.Initialize();
-
-            listener = new HttpListener();
-            listener.Prefixes.Add($"http://localhost:{port}/mcp/");
-            listener.Start();
-
-            // バックグラウンドスレッドでリクエストを待ち受ける
-            thread = new Thread(ListenLoop);
-            thread.IsBackground = true;
-            thread.Start();
-
-            Debug.Log($"[MCP] Server started on http://localhost:{port}/mcp/");
+            catch (Exception e)
+            {
+                Debug.LogError($"[MCP] Failed to start server: {e.Message}");
+            }
         }
 
         /// <summary>
@@ -74,6 +81,8 @@ namespace UnityMcp
         {
             listener?.Stop();
             listener?.Close();
+            // リスナー停止後、スレッドの終了を待機する
+            thread?.Join(TimeSpan.FromSeconds(3));
             thread = null;
         }
 
@@ -85,8 +94,20 @@ namespace UnityMcp
         {
             while (listener.IsListening)
             {
-                var context = listener.GetContext();
-                HandleRequest(context);
+                try
+                {
+                    var context = listener.GetContext();
+                    HandleRequest(context);
+                }
+                catch (HttpListenerException)
+                {
+                    // サーバー停止時にGetContext()が例外をスローするため、正常終了として扱う
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
             }
         }
 
@@ -142,12 +163,19 @@ namespace UnityMcp
         /// </summary>
         private static void WriteResponse(HttpListenerContext ctx, McpResponse response)
         {
-            var json = JsonUtility.ToJson(response);
-            var buffer = Encoding.UTF8.GetBytes(json);
+            try
+            {
+                var json = JsonUtility.ToJson(response);
+                var buffer = Encoding.UTF8.GetBytes(json);
 
-            ctx.Response.ContentType = "application/json";
-            ctx.Response.OutputStream.Write(buffer, 0, buffer.Length);
-            ctx.Response.OutputStream.Close();
+                ctx.Response.ContentType = "application/json";
+                ctx.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                ctx.Response.OutputStream.Close();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[MCP] Failed to write response: {e.Message}");
+            }
         }
     }
 }
