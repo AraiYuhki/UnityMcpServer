@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(curl:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "unity-mcp"
+  ]
 }
