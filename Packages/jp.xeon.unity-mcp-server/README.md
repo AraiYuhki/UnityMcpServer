@@ -85,6 +85,23 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 }
 ```
 
+### Claude Codeとの接続
+
+Unityプロジェクトのルートに `.mcp.json` を作成してください：
+
+```json
+{
+  "mcpServers": {
+    "unity-mcp": {
+      "type": "http",
+      "url": "http://localhost:7000/mcp/"
+    }
+  }
+}
+```
+
+Claude Codeを起動（または再起動）すると、自動的にMCPサーバーへ接続されます。
+
 ### カスタムツールの登録
 
 `McpToolRouter.TryRegisterTool` を使用してカスタムツールを登録できます：

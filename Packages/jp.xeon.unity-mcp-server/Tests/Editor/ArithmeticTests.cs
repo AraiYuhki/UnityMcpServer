@@ -156,7 +156,7 @@ namespace UnityMcp.Tests
         [Test]
         public void Fail_LargeAddition_Overflow()
         {
-            Assert.AreEqual(0, int.MaxValue + 1, "オーバーフローで0にはならない");
+            Assert.AreEqual(0, int.MaxValue - 1, "オーバーフローで0にはならない");
         }
     }
 }
