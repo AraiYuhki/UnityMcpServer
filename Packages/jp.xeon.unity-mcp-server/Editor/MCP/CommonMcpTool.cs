@@ -10,6 +10,7 @@ namespace UnityMcp
     {
         public string Name { get; }
         public string Description { get; }
+        public string InputSchema { get; }
 
         private Func<string, Task<object>> func;
 
@@ -19,10 +20,12 @@ namespace UnityMcp
         /// <param name="name">ツール名</param>
         /// <param name="func">ツールの実行関数</param>
         /// <param name="description">ツールの説明</param>
-        public CommonMcpTool(string name, Func<string, Task<object>> func, string description = "")
+        /// <param name="inputSchema">ツールの入力スキーマ（JSON Schema文字列）</param>
+        public CommonMcpTool(string name, Func<string, Task<object>> func, string description = "", string inputSchema = "{\"type\":\"object\",\"properties\":{}}")
         {
             Name = name;
             Description = description;
+            InputSchema = inputSchema;
             this.func = func;
         }
         

@@ -1,55 +1,65 @@
-﻿using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEditor.TestTools.TestRunner.Api;
-using UnityEngine;
 
 namespace UnityMcp
 {
     /// <summary>
-    /// テスト実行結果のサマリーを表すデータクラス
-    /// 成功・失敗・スキップの件数と、失敗したテストの詳細を保持する
+    /// テスト実行結果のサマリー
+    /// AIが一目で結果を把握できるフラットな構造で返す
     /// </summary>
-    [Serializable]
     public class TestResultSummary
     {
-        /// <summary>
-        /// 成功したテストの件数
-        /// </summary>
-        [SerializeField] private int passCount;
+        [JsonProperty("summary")]
+        public string Summary { get; private set; }
 
-        /// <summary>
-        /// 失敗したテストの件数
-        /// </summary>
-        [SerializeField] private int failedCount;
+        [JsonProperty("totalCount")]
+        public int TotalCount { get; private set; }
 
-        /// <summary>
-        /// スキップされたテストの件数
-        /// </summary>
-        [SerializeField] private int skippedCount;
+        [JsonProperty("passCount")]
+        public int PassCount { get; private set; }
 
-        /// <summary>
-        /// 失敗したテストの詳細リスト
-        /// </summary>
-        [SerializeField] private List<TestResult> failedResults = new();
+        [JsonProperty("failCount")]
+        public int FailCount { get; private set; }
 
-        /// <summary>
-        /// ITestResultAdaptorからTestResultSummaryを生成する
-        /// </summary>
+        [JsonProperty("skipCount")]
+        public int SkipCount { get; private set; }
+
+        [JsonProperty("allPassed")]
+        public bool AllPassed { get; private set; }
+
+        [JsonProperty("failures")]
+        public List<TestFailure> Failures { get; private set; } = new();
+
         public TestResultSummary(ITestResultAdaptor result)
         {
-            passCount = result.PassCount;
-            failedCount = result.FailCount;
-            skippedCount = result.SkipCount;
+            PassCount = result.PassCount;
+            FailCount = result.FailCount;
+            SkipCount = result.SkipCount;
+            TotalCount = PassCount + FailCount + SkipCount;
+            AllPassed = FailCount == 0;
+            Summary = $"{PassCount} passed, {FailCount} failed, {SkipCount} skipped ({TotalCount} total)";
 
-            // 直接の子テストから失敗結果を収集
-            // 各TestResultが再帰的に子の失敗を収集する
-            if (result.HasChildren)
+            CollectFailures(result);
+        }
+
+        /// <summary>
+        /// テスト結果ツリーを再帰的に走査し、末端の失敗テストだけをフラットに収集する
+        /// </summary>
+        private void CollectFailures(ITestResultAdaptor result)
+        {
+            if (!result.HasChildren)
             {
-                foreach (var child in result.Children)
+                if (result.TestStatus == TestStatus.Failed)
                 {
-                    if (child.TestStatus is TestStatus.Failed)
-                        failedResults.Add(new TestResult(child));
+                    Failures.Add(TestFailure.FromResult(result));
                 }
+                return;
+            }
+
+            foreach (var child in result.Children)
+            {
+                CollectFailures(child);
             }
         }
     }

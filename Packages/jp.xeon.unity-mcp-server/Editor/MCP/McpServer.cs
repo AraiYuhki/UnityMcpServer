@@ -1,24 +1,42 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
+using UnityMcp.JsonRpc;
+using UnityMcp.Transport;
 
 namespace UnityMcp
 {
     /// <summary>
-    /// Unity Editor上で動作するMCPサーバー
-    /// HTTPリクエストを受け付け、登録されたツールを実行する
+    /// MCP server running in the Unity Editor.
+    /// Implements Streamable HTTP transport for the Model Context Protocol.
+    /// Accepts HTTP requests and routes them through the JSON-RPC method router.
     /// </summary>
     [InitializeOnLoad]
     public static class McpServer
     {
         private static HttpListener listener;
         private static Thread thread;
-        
+        private static McpSession session;
+        private static McpMethodRouter methodRouter;
+
+        private static readonly JsonSerializerSettings JsonSettings = new()
+        {
+            NullValueHandling = NullValueHandling.Ignore
+        };
+
+        static McpServer()
+        {
+            Start();
+            EditorApplication.quitting += Stop;
+        }
+
         /// <summary>
-        /// MCPサーバーをリスタートする
+        /// Restarts the MCP server via the Unity Editor menu.
         /// </summary>
         [MenuItem("Tools/Restart MCP Server")]
         public static void Restart()
@@ -29,38 +47,20 @@ namespace UnityMcp
             EditorApplication.quitting += Stop;
         }
 
-        static McpServer()
-        {
-            Start();
-            EditorApplication.quitting += Stop;
-        }
-
-        /// <summary>
-        /// サーバーを起動する
-        /// McpServerSettingアセットからポート番号を取得し、HTTPリスナーを開始する
-        /// </summary>
         private static void Start()
         {
             try
             {
-                // 設定アセットからポート番号を取得（見つからない場合はデフォルト7000）
-                var guids = AssetDatabase.FindAssets($"t:{nameof(McpServerSetting)}");
-                var port = 7000;
-                if (guids is { Length: > 0 })
-                {
-                    var path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                    var setting = AssetDatabase.LoadAssetAtPath<McpServerSetting>(path);
-                    if (setting != null)
-                        port = setting.Port;
-                }
+                var port = ResolvePort();
 
+                session = new McpSession();
+                methodRouter = new McpMethodRouter(session);
                 McpToolRouter.Initialize();
 
                 listener = new HttpListener();
                 listener.Prefixes.Add($"http://localhost:{port}/mcp/");
                 listener.Start();
 
-                // バックグラウンドスレッドでリクエストを待ち受ける
                 thread = new Thread(ListenLoop);
                 thread.IsBackground = true;
                 thread.Start();
@@ -73,109 +73,328 @@ namespace UnityMcp
             }
         }
 
-        /// <summary>
-        /// サーバーを停止する
-        /// Editor終了時に呼び出される
-        /// </summary>
         private static void Stop()
         {
             listener?.Stop();
             listener?.Close();
-            // リスナー停止後、スレッドの終了を待機する
             thread?.Join(TimeSpan.FromSeconds(3));
             thread = null;
         }
 
-        /// <summary>
-        /// HTTPリクエストを待ち受けるループ
-        /// バックグラウンドスレッドで実行される
-        /// </summary>
+        private static int ResolvePort()
+        {
+            var guids = AssetDatabase.FindAssets($"t:{nameof(McpServerSetting)}");
+            if (guids is not { Length: > 0 })
+            {
+                return 7000;
+            }
+
+            var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+            var setting = AssetDatabase.LoadAssetAtPath<McpServerSetting>(path);
+            return setting != null ? setting.Port : 7000;
+        }
+
         private static void ListenLoop()
         {
             while (listener.IsListening)
             {
-                try
-                {
-                    var context = listener.GetContext();
-                    HandleRequest(context);
-                }
-                catch (HttpListenerException)
-                {
-                    // サーバー停止時にGetContext()が例外をスローするため、正常終了として扱う
-                    break;
-                }
-                catch (ObjectDisposedException)
+                if (!TryAcceptConnection())
                 {
                     break;
                 }
             }
         }
 
+        private static bool TryAcceptConnection()
+        {
+            try
+            {
+                var context = listener.GetContext();
+                ThreadPool.QueueUserWorkItem(_ => HandleRequest(context));
+                return true;
+            }
+            catch (HttpListenerException)
+            {
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+        }
+
         /// <summary>
-        /// HTTPリクエストを処理する
-        /// リクエストボディをパースし、メインスレッドでツール実行をキューイングする
+        /// Top-level request handler. Catches unexpected errors and delegates by HTTP method.
         /// </summary>
         private static void HandleRequest(HttpListenerContext ctx)
         {
             try
             {
-                using var reader = new System.IO.StreamReader(ctx.Request.InputStream);
-                var body = reader.ReadToEnd();
-                var request = JsonUtility.FromJson<McpRequest>(body);
-
-                // Unity APIはメインスレッドでのみ実行可能なため、Dispatcherを経由する
-                McpDispatcher.Enqueue(() => ExecuteRequest(ctx, request));
+                DispatchByHttpMethod(ctx);
             }
             catch (Exception e)
             {
-                WriteResponse(ctx, new McpResponse
-                {
-                    ok = false,
-                    error = e.Message
-                });
+                Debug.LogWarning($"[MCP] Request handling error: {e.Message}");
+            }
+        }
+
+        private static void DispatchByHttpMethod(HttpListenerContext ctx)
+        {
+            switch (ctx.Request.HttpMethod)
+            {
+                case "POST":
+                    HandlePost(ctx);
+                    break;
+                case "GET":
+                    HandleGet(ctx);
+                    break;
+                case "DELETE":
+                    HandleDelete(ctx);
+                    break;
+                default:
+                    RespondMethodNotAllowed(ctx);
+                    break;
+            }
+        }
+
+        private static void HandlePost(HttpListenerContext ctx)
+        {
+            string body;
+            using (var reader = new StreamReader(ctx.Request.InputStream))
+            {
+                body = reader.ReadToEnd();
+            }
+
+            JsonRpcRequest request;
+            try
+            {
+                request = JsonConvert.DeserializeObject<JsonRpcRequest>(body);
+            }
+            catch (JsonException e)
+            {
+                WriteParseErrorResponse(ctx, e.Message);
+                return;
+            }
+
+            if (request == null)
+            {
+                WriteParseErrorResponse(ctx, "Empty or invalid JSON-RPC request");
+                return;
+            }
+
+            bool isInitialize = request.Method == "initialize";
+            if (!IsSessionHeaderValid(ctx, isInitialize))
+            {
+                return;
+            }
+
+            McpDispatcher.Enqueue(() => ExecuteAndRespond(ctx, request));
+        }
+
+        /// <summary>
+        /// Routes the request through McpMethodRouter and writes the response.
+        /// Runs on the Unity main thread via McpDispatcher.
+        /// </summary>
+        private static async void ExecuteAndRespond(HttpListenerContext ctx, JsonRpcRequest request)
+        {
+            try
+            {
+                var response = await methodRouter.RouteAsync(request);
+                SendRouteResult(ctx, request, response);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[MCP] Error executing request: {e.Message}");
+                WriteInternalErrorResponse(ctx, request.Id, e.Message);
+            }
+        }
+
+        private static void SendRouteResult(
+            HttpListenerContext ctx,
+            JsonRpcRequest request,
+            JsonRpcResponse response)
+        {
+            if (response == null)
+            {
+                RespondAccepted(ctx);
+                return;
+            }
+
+            AddSessionHeader(ctx);
+
+            if (AcceptsSse(ctx.Request))
+            {
+                WriteSseResponse(ctx, response);
+            }
+            else
+            {
+                WriteJsonResponse(ctx, response);
             }
         }
 
         /// <summary>
-        /// ツールを実行し、結果をレスポンスとして返す
-        /// メインスレッドで実行される
+        /// Opens an SSE stream for server-to-client notifications.
+        /// Keeps the connection alive until the server stops or the client disconnects.
         /// </summary>
-        private static async void ExecuteRequest(HttpListenerContext ctx, McpRequest request)
+        private static void HandleGet(HttpListenerContext ctx)
         {
-            var response = new McpResponse();
-            try
+            if (!IsSessionHeaderValid(ctx, false))
             {
-                var executeResult = await McpToolRouter.Execute(request);
-                response.result = JsonUtility.ToJson(executeResult);
-                response.ok = true;
-            }
-            catch (Exception e)
-            {
-                response.ok = false;
-                response.error = e.Message;
+                return;
             }
 
-            WriteResponse(ctx, response);
+            AddSessionHeader(ctx);
+            KeepSseConnectionAlive(ctx.Response);
+        }
+
+        private static void KeepSseConnectionAlive(HttpListenerResponse response)
+        {
+            var writer = new SseWriter(response);
+            try
+            {
+                WaitWhileListening();
+            }
+            finally
+            {
+                TryCloseWriter(writer);
+            }
+        }
+
+        private static void WaitWhileListening()
+        {
+            while (listener != null && listener.IsListening)
+            {
+                Thread.Sleep(1000);
+            }
+        }
+
+        private static void TryCloseWriter(SseWriter writer)
+        {
+            try
+            {
+                writer.Close();
+            }
+            catch (Exception)
+            {
+                // Stream already closed by client disconnect or server shutdown
+            }
         }
 
         /// <summary>
-        /// HTTPレスポンスをJSON形式で書き込む
+        /// Terminates the current session and prepares for a fresh initialize handshake.
         /// </summary>
-        private static void WriteResponse(HttpListenerContext ctx, McpResponse response)
+        private static void HandleDelete(HttpListenerContext ctx)
+        {
+            if (!IsSessionHeaderValid(ctx, false))
+            {
+                return;
+            }
+
+            session = new McpSession();
+            methodRouter = new McpMethodRouter(session);
+
+            ctx.Response.StatusCode = 200;
+            ctx.Response.Close();
+        }
+
+        private static bool IsSessionHeaderValid(HttpListenerContext ctx, bool skipValidation)
+        {
+            if (skipValidation)
+            {
+                return true;
+            }
+
+            var headerValue = ctx.Request.Headers["Mcp-Session-Id"];
+            if (headerValue == session.SessionId)
+            {
+                return true;
+            }
+
+            ctx.Response.StatusCode = 400;
+            ctx.Response.Close();
+            return false;
+        }
+
+        private static void AddSessionHeader(HttpListenerContext ctx)
+        {
+            ctx.Response.Headers.Add("Mcp-Session-Id", session.SessionId);
+        }
+
+        private static bool AcceptsSse(HttpListenerRequest request)
+        {
+            var accept = request.Headers["Accept"];
+            if (accept == null)
+            {
+                return false;
+            }
+
+            return accept.Contains("text/event-stream");
+        }
+
+        private static void WriteJsonResponse(HttpListenerContext ctx, JsonRpcResponse response)
         {
             try
             {
-                var json = JsonUtility.ToJson(response);
+                var json = JsonConvert.SerializeObject(response, JsonSettings);
                 var buffer = Encoding.UTF8.GetBytes(json);
-
                 ctx.Response.ContentType = "application/json";
                 ctx.Response.OutputStream.Write(buffer, 0, buffer.Length);
                 ctx.Response.OutputStream.Close();
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[MCP] Failed to write response: {e.Message}");
+                Debug.LogWarning($"[MCP] Failed to write JSON response: {e.Message}");
             }
+        }
+
+        private static void WriteSseResponse(HttpListenerContext ctx, JsonRpcResponse response)
+        {
+            try
+            {
+                var writer = new SseWriter(ctx.Response);
+                var json = JsonConvert.SerializeObject(response, JsonSettings);
+                writer.WriteEvent(json);
+                writer.Close();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[MCP] Failed to write SSE response: {e.Message}");
+            }
+        }
+
+        private static void WriteParseErrorResponse(HttpListenerContext ctx, string message)
+        {
+            var error = new JsonRpcError
+            {
+                Code = JsonRpcErrorCodes.ParseError,
+                Message = message
+            };
+            var response = JsonRpcResponse.Failure(null, error);
+            WriteJsonResponse(ctx, response);
+        }
+
+        private static void WriteInternalErrorResponse(HttpListenerContext ctx, object requestId, string message)
+        {
+            var error = new JsonRpcError
+            {
+                Code = JsonRpcErrorCodes.InternalError,
+                Message = message
+            };
+            var response = JsonRpcResponse.Failure(requestId, error);
+            WriteJsonResponse(ctx, response);
+        }
+
+        private static void RespondAccepted(HttpListenerContext ctx)
+        {
+            AddSessionHeader(ctx);
+            ctx.Response.StatusCode = 202;
+            ctx.Response.Close();
+        }
+
+        private static void RespondMethodNotAllowed(HttpListenerContext ctx)
+        {
+            ctx.Response.StatusCode = 405;
+            ctx.Response.Close();
         }
     }
 }
