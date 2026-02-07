@@ -5,6 +5,7 @@ Unity Editor上で動作するMCP（Model Context Protocol）サーバーです�
 
 ## 機能
 
+- MCP 2025-03-26 仕様準拠（Streamable HTTP + JSON-RPC 2.0）
 - Unity Editor起動時に自動でHTTPサーバーを開始
 - メニューからサーバーのリスタートが可能
 - テストの実行（EditMode / PlayMode）
@@ -66,22 +67,58 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 | `run_editmode_tests` | EditModeテストを実行 |
 | `run_playmode_tests` | PlayModeテストを実行 |
 
-### リクエスト形式
+### プロトコル
+
+MCP 2025-03-26 仕様に準拠した Streamable HTTP トランスポートを使用します。
+すべてのリクエストは JSON-RPC 2.0 形式で `POST /mcp/` に送信します。
+
+#### 対応メソッド
+
+| メソッド | 説明 |
+|---------|------|
+| `initialize` | セッションの初期化（ハンドシェイク） |
+| `notifications/initialized` | 初期化完了通知 |
+| `ping` | 疎通確認 |
+| `tools/list` | 登録済みツール一覧の取得 |
+| `tools/call` | ツールの実行 |
+
+#### 接続フロー
+
+```
+1. POST initialize        → セッションID取得
+2. POST notifications/initialized  → 初期化完了を通知（レスポンスなし）
+3. POST tools/call         → ツール実行（以降、Mcp-Session-Id ヘッダー必須）
+```
+
+#### リクエスト例（tools/call）
 
 ```json
 {
-  "tool": "ツール名",
-  "arguments": "引数（JSON文字列）"
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "run_editmode_tests",
+    "arguments": {}
+  }
 }
 ```
 
-### レスポンス形式
+#### レスポンス例
 
 ```json
 {
-  "ok": true,
-  "result": "結果（JSON文字列）",
-  "error": "エラーメッセージ（失敗時のみ）"
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"summary\":\"70 passed, 0 failed, 0 skipped (70 total)\", ...}"
+      }
+    ],
+    "isError": false
+  }
 }
 ```
 
