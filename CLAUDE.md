@@ -26,3 +26,25 @@
 ### 戻り値
 
 - コルーチンを除き、メソッドの戻り値を `IEnumerator` で返すことは禁止する
+
+## MCPツールの使用ガイドライン
+
+このプロジェクトはUnity Editor上でMCPサーバー（unity-mcp）を動作させている。
+以下のツールが利用可能であり、適切なタイミングで使用すること。
+
+### 利用可能なツール
+
+- **check_status**: Unity Editorが起動中でMCPサーバーが応答可能か確認する
+- **run_editmode_tests**: Unity Test RunnerでEditModeテストを全件実行する
+- **run_playmode_tests**: Unity Test RunnerでPlayModeテストを全件実行する
+
+### 使用タイミング
+
+- C#スクリプトを変更した後は `run_editmode_tests` を実行し、既存機能が壊れていないことを確認する
+- MonoBehaviour・物理演算・シーン関連のロジックを変更した後は `run_playmode_tests` も実行する
+- Unity関連の作業を開始する前に `check_status` でEditorとの接続を確認する
+
+### テスト失敗時の対応
+
+- 失敗したテストの内容を確認し、原因を特定して修正する
+- 修正後に再度テストを実行し、全件パスすることを確認してからコミットする
