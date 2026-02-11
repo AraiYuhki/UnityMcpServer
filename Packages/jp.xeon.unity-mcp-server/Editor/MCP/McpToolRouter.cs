@@ -24,9 +24,19 @@ namespace UnityMcp
         public static void Initialize()
         {
             toolList.Clear();
-            var editModeTestTool = new RunTests("run_editmode_tests", "Run Test Runner in EditMode", TestMode.EditMode);
-            var playModeTestTool = new RunTests("run_playmode_tests",  "Run Test Runner in PlayMode", TestMode.PlayMode);
-            TryRegisterTool("check_status", CheckStatus);
+            var checkStatusTool = new CommonMcpTool(
+                "check_status",
+                CheckStatus,
+                "Check if the Unity Editor is running and the MCP server is responsive. Call this before performing any Unity-related operations to verify connectivity.");
+            var editModeTestTool = new RunTests(
+                "run_editmode_tests",
+                "Run all EditMode unit tests in the Unity project using Test Runner. Call this after modifying C# scripts to verify that changes don't break existing functionality. Returns a summary with pass/fail counts and details of any failures.",
+                TestMode.EditMode);
+            var playModeTestTool = new RunTests(
+                "run_playmode_tests",
+                "Run all PlayMode integration tests in the Unity project using Test Runner. Call this to verify runtime behavior after changes to MonoBehaviour, physics, or scene logic. Returns a summary with pass/fail counts and details of any failures.",
+                TestMode.PlayMode);
+            TryRegisterTool(checkStatusTool);
             TryRegisterTool(editModeTestTool);
             TryRegisterTool(playModeTestTool);
         }
@@ -49,6 +59,7 @@ namespace UnityMcp
         /// <param name="toolName">ツール名</param>
         /// <param name="func">ツールの実行関数（引数: JSON文字列、戻り値: 結果オブジェクト）</param>
         /// <returns>登録に成功した場合true</returns>
+        [Obsolete("TryRegisterTool(IMcpTool) を使用してください。このオーバーロードは将来のバージョンで削除されます。")]
         public static bool TryRegisterTool(string toolName, Func<string, Task<object>> func)
         {
             var tool = new CommonMcpTool(toolName, func);
