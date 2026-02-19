@@ -2,9 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(git mv:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__jetbrains__list_directory_tree",
+      "mcp__jetbrains__get_file_text_by_path",
+      "mcp__unity-mcp__check_status",
+      "mcp__jetbrains__get_file_problems"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "unity-mcp"
   ]

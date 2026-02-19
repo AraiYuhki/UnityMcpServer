@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor.TestTools.TestRunner.Api;
+using UnityMcp.Tools.Asset;
+using UnityMcp.Tools.Compile;
+using UnityMcp.Tools.Console;
+using UnityMcp.Tools.Scene;
 
 namespace UnityMcp
 {
@@ -39,6 +43,10 @@ namespace UnityMcp
             TryRegisterTool(checkStatusTool);
             TryRegisterTool(editModeTestTool);
             TryRegisterTool(playModeTestTool);
+            TryRegisterTool(new GetCompileErrors());
+            TryRegisterTool(new GetSceneHierarchy());
+            TryRegisterTool(new FindMissingReferences());
+            TryRegisterTool(new GetConsoleLogs());
         }
 
         /// <summary>
@@ -51,21 +59,7 @@ namespace UnityMcp
         {
             return toolList.TryAdd(tool.Name, tool);
         }
-
-        /// <summary>
-        /// ツールを登録する
-        /// 同名のツールが既に登録されている場合は登録せずfalseを返す
-        /// </summary>
-        /// <param name="toolName">ツール名</param>
-        /// <param name="func">ツールの実行関数（引数: JSON文字列、戻り値: 結果オブジェクト）</param>
-        /// <returns>登録に成功した場合true</returns>
-        [Obsolete("TryRegisterTool(IMcpTool) を使用してください。このオーバーロードは将来のバージョンで削除されます。")]
-        public static bool TryRegisterTool(string toolName, Func<string, Task<object>> func)
-        {
-            var tool = new CommonMcpTool(toolName, func);
-            return toolList.TryAdd(toolName, tool);
-        }
-
+        
         /// <summary>
         /// 登録されたツールのリストを取得する
         /// </summary>
