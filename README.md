@@ -65,6 +65,12 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 | `check_status` | サーバーの稼働状態を確認 |
 | `run_editmode_tests` | EditModeテストを実行 |
 | `run_playmode_tests` | PlayModeテストを実行 |
+| `get_compile_errors` | 直近のコンパイルエラー・警告を取得 |
+| `get_scene_hierarchy` | 現在のシーンのGameObject階層を取得 |
+| `get_component_info` | 指定GameObjectのコンポーネント詳細を取得 |
+| `find_missing_references` | シーン・Prefab内のMissing Referenceを検索 |
+| `get_asset_list` | 指定パス以下のアセット一覧を取得 |
+| `get_console_logs` | Consoleのログ一覧を取得 |
 
 ### リクエスト形式
 
