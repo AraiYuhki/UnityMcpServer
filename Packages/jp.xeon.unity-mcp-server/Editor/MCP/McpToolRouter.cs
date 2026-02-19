@@ -46,7 +46,9 @@ namespace UnityMcp
             TryRegisterTool(new GetCompileErrors());
             TryRegisterTool(new GetSceneHierarchy());
             TryRegisterTool(new FindMissingReferences());
+            TryRegisterTool(new GetAssetList());
             TryRegisterTool(new GetConsoleLogs());
+            TryRegisterTool(new GetComponentInfo());
         }
 
         /// <summary>
