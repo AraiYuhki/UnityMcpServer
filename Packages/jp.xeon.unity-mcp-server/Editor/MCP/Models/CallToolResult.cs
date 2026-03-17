@@ -28,5 +28,14 @@ namespace UnityMcp.Models
                 IsError = true
             };
         }
+
+        public static CallToolResult SuccessImage(string base64Data, string mimeType)
+        {
+            return new CallToolResult
+            {
+                Content = new List<object> { new ImageContent { Data = base64Data, MimeType = mimeType } },
+                IsError = false
+            };
+        }
     }
 }

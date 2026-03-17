@@ -1,28 +1,27 @@
 using System;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace UnityMcp.Tools.Scene
 {
     /// <summary>
-    /// 指定GameObjectにアタッチされているコンポーネントの詳細情報を返すツール
+    /// シーン上のGameObjectを削除するツール
     /// </summary>
-    public class GetComponentInfo : IMcpTool
+    public class DeleteGameObject : IMcpTool
     {
-        public string Name => "get_component_info";
+        public string Name => "delete_gameobject";
 
         public string Description =>
-            "Get detailed information about components attached to a specified GameObject. " +
-            "Specify the GameObject by its hierarchy path (e.g. 'Canvas/Panel/Button'). " +
-            "Returns serialized field values for each component. " +
+            "Delete a GameObject from the current scene by its hierarchy path. " +
+            "This operation supports undo. " +
             "Use get_scene_hierarchy first to find the correct path.";
 
         public string InputSchema =>
             "{\"type\":\"object\",\"properties\":{" +
-            "\"gameObjectPath\":{\"type\":\"string\",\"description\":\"Hierarchy path from scene root (e.g. 'Canvas/Panel/Button')\"}," +
-            "\"componentType\":{\"type\":\"string\",\"description\":\"Filter by component type name (e.g. 'Button'). If omitted, all components are returned.\"}" +
+            "\"gameObjectPath\":{\"type\":\"string\",\"description\":\"Hierarchy path from scene root (e.g. 'Canvas/Panel/Button')\"}" +
             "},\"required\":[\"gameObjectPath\"]}";
 
         public Task<object> Execute(string args)
@@ -40,19 +39,12 @@ namespace UnityMcp.Tools.Scene
                 throw new InvalidOperationException($"GameObject not found: '{parameters.GameObjectPath}'");
             }
 
-            var components = SerializedPropertyExtractor.CollectComponentDetails(go, parameters.ComponentType);
-            var result = ComponentInfoResult.Create(go, parameters.GameObjectPath, components);
+            var scene = go.scene;
+            Undo.DestroyObjectImmediate(go);
+            EditorSceneManager.MarkSceneDirty(scene);
+
+            var result = new DeleteGameObjectResult(parameters.GameObjectPath);
             return Task.FromResult<object>(result);
-        }
-
-        private static GetComponentInfoArgs ParseArgs(string args)
-        {
-            if (string.IsNullOrEmpty(args))
-            {
-                return new GetComponentInfoArgs();
-            }
-
-            return JsonConvert.DeserializeObject<GetComponentInfoArgs>(args) ?? new GetComponentInfoArgs();
         }
 
         private static GameObject FindGameObject(string path)
@@ -86,14 +78,36 @@ namespace UnityMcp.Tools.Scene
             var child = root.transform.Find(remaining);
             return child != null ? child.gameObject : null;
         }
+
+        private static DeleteGameObjectArgs ParseArgs(string args)
+        {
+            if (string.IsNullOrEmpty(args))
+            {
+                return new DeleteGameObjectArgs();
+            }
+
+            return JsonConvert.DeserializeObject<DeleteGameObjectArgs>(args) ?? new DeleteGameObjectArgs();
+        }
     }
 
-    internal class GetComponentInfoArgs
+    internal class DeleteGameObjectArgs
     {
         [JsonProperty("gameObjectPath")]
         public string GameObjectPath { get; set; } = string.Empty;
+    }
 
-        [JsonProperty("componentType")]
-        public string ComponentType { get; set; } = string.Empty;
+    internal class DeleteGameObjectResult
+    {
+        [JsonProperty("deletedPath")]
+        public string DeletedPath { get; private set; }
+
+        [JsonProperty("message")]
+        public string Message { get; private set; }
+
+        public DeleteGameObjectResult(string deletedPath)
+        {
+            DeletedPath = deletedPath;
+            Message = $"GameObject '{deletedPath}' has been deleted.";
+        }
     }
 }

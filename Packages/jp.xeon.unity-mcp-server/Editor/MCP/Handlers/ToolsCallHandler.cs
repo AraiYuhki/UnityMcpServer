@@ -20,8 +20,15 @@ namespace UnityMcp.Handlers
             try
             {
                 var result = await McpToolRouter.Execute(toolName, argumentsJson);
-                var serialized = JsonConvert.SerializeObject(result);
-                callToolResult = CallToolResult.SuccessText(serialized);
+                if (result is CallToolResult directResult)
+                {
+                    callToolResult = directResult;
+                }
+                else
+                {
+                    var serialized = JsonConvert.SerializeObject(result);
+                    callToolResult = CallToolResult.SuccessText(serialized);
+                }
             }
             catch (Exception ex)
             {

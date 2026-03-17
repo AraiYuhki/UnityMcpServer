@@ -2,9 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor.TestTools.TestRunner.Api;
+using UnityMcp.Tools.Animation;
 using UnityMcp.Tools.Asset;
 using UnityMcp.Tools.Compile;
 using UnityMcp.Tools.Console;
+using UnityMcp.Tools.Editor;
+using UnityMcp.Tools.Material;
+using UnityMcp.Tools.Prefab;
 using UnityMcp.Tools.Scene;
 
 namespace UnityMcp
@@ -49,6 +53,40 @@ namespace UnityMcp
             TryRegisterTool(new GetAssetList());
             TryRegisterTool(new GetConsoleLogs());
             TryRegisterTool(new GetComponentInfo());
+            TryRegisterTool(new SetComponentProperty());
+            TryRegisterTool(new OpenScene());
+            TryRegisterTool(new TakeScreenshot());
+            TryRegisterTool(new AddComponent());
+            TryRegisterTool(new RemoveComponent());
+            TryRegisterTool(new CreateGameObject());
+            TryRegisterTool(new DeleteGameObject());
+            TryRegisterTool(new MoveGameObject());
+            TryRegisterTool(new DuplicateGameObject());
+            TryRegisterTool(new GetPrefabHierarchy());
+            TryRegisterTool(new GetPrefabComponentInfo());
+            TryRegisterTool(new CreatePrefab());
+            TryRegisterTool(new SetPrefabComponentProperty());
+            TryRegisterTool(new CreateScript());
+            TryRegisterTool(new ReadScript());
+            TryRegisterTool(new CreateAsset());
+            TryRegisterTool(new DeleteAsset());
+            TryRegisterTool(new MoveAsset());
+            TryRegisterTool(new ImportAsset());
+            TryRegisterTool(new EnterPlayMode());
+            TryRegisterTool(new ExitPlayMode());
+            TryRegisterTool(new GetPlayModeState());
+            TryRegisterTool(new UndoOperation());
+            TryRegisterTool(new RedoOperation());
+            TryRegisterTool(new GetMaterialProperties());
+            TryRegisterTool(new SetMaterialProperty());
+            TryRegisterTool(new GetCanvasInfo());
+            TryRegisterTool(new SetRectTransform());
+            TryRegisterTool(new GetAnimatorParameters());
+            TryRegisterTool(new GetAnimationClips());
+            TryRegisterTool(new Raycast());
+            TryRegisterTool(new BakeNavMesh());
+            TryRegisterTool(new GetBuildSettings());
+            TryRegisterTool(new BuildProject());
         }
 
         /// <summary>
