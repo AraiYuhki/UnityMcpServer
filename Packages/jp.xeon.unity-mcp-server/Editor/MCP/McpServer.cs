@@ -24,6 +24,9 @@ namespace UnityMcp
         private static McpSession session;
         private static McpMethodRouter methodRouter;
 
+        /// <summary>ドメインリロードをまたいでセッションIDを保持するためのSessionStateキー</summary>
+        private const string SessionIdKey = "UnityMcp.SessionId";
+
         private static readonly JsonSerializerSettings JsonSettings = new()
         {
             NullValueHandling = NullValueHandling.Ignore
@@ -53,7 +56,19 @@ namespace UnityMcp
             {
                 var port = ResolvePort();
 
-                session = new McpSession();
+                // ドメインリロード時は以前のセッションIDを復元してReadyへ戻す
+                var persistedId = SessionState.GetString(SessionIdKey, "");
+                if (!string.IsNullOrEmpty(persistedId))
+                {
+                    session = new McpSession(persistedId);
+                    session.Restore();
+                }
+                else
+                {
+                    session = new McpSession();
+                }
+                SessionState.SetString(SessionIdKey, session.SessionId);
+
                 methodRouter = new McpMethodRouter(session);
                 McpToolRouter.Initialize();
 
@@ -75,6 +90,8 @@ namespace UnityMcp
 
         private static void Stop()
         {
+            // 終了・手動再起動時はセッションIDをクリアして次回は新セッションを生成する
+            SessionState.EraseString(SessionIdKey);
             listener?.Stop();
             listener?.Close();
             thread?.Join(TimeSpan.FromSeconds(3));

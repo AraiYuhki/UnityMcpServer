@@ -24,6 +24,24 @@ namespace UnityMcp
             State = SessionState.Uninitialized;
         }
 
+        /// <summary>
+        /// ドメインリロード後の復元用。既存のセッションIDを引き継いで生成する
+        /// </summary>
+        /// <param name="existingSessionId">復元するセッションID</param>
+        public McpSession(string existingSessionId)
+        {
+            SessionId = existingSessionId;
+            State = SessionState.Uninitialized;
+        }
+
+        /// <summary>
+        /// ドメインリロード後にReady状態へ復元する
+        /// </summary>
+        public void Restore()
+        {
+            State = SessionState.Ready;
+        }
+
         public void MarkInitializing(string protocolVersion, ClientInfo clientInfo)
         {
             ProtocolVersion = protocolVersion;
