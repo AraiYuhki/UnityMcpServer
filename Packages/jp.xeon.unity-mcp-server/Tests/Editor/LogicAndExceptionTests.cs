@@ -5,7 +5,7 @@ using UnityEngine;
 namespace UnityMcp.Tests
 {
     /// <summary>
-    /// 論理演算・型変換・例外処理のテスト（25件: 17成功 / 8失敗）
+    /// 論理演算・型変換・例外処理のテスト（17件）
     /// </summary>
     public class LogicAndExceptionTests
     {
@@ -130,63 +130,6 @@ namespace UnityMcp.Tests
         {
             var v = new Vector3(3, 4, 0);
             Assert.AreEqual(5.0f, v.magnitude, 0.001f);
-        }
-
-        // --- 以下、意図的に失敗するテスト ---
-
-        [Test]
-        public void Fail_Bool_AndWithFalse()
-        {
-            Assert.IsTrue(true && false, "true && false はfalse");
-        }
-
-        [Test]
-        public void Fail_Null_NotNull_Wrong()
-        {
-            string value = null;
-            Assert.IsNotNull(value, "nullの値にIsNotNullは失敗する");
-        }
-
-        [Test]
-        public void Fail_Equality_DifferentTypes()
-        {
-            Assert.AreEqual(1, 1.1, "intとdoubleの比較で不一致");
-        }
-
-        [Test]
-        public void Fail_Cast_StringToInt_Throws()
-        {
-            Assert.AreEqual(123, (object)"123", "文字列とintは異なるオブジェクト");
-        }
-
-        [Test]
-        public void Fail_Exception_NoThrow()
-        {
-            Assert.Throws<InvalidOperationException>(() =>
-            {
-                int result = 1 + 1;
-            }, "例外がスローされないためfail");
-        }
-
-        [Test]
-        public void Fail_Exception_WrongType()
-        {
-            Assert.Throws<ArgumentException>(() =>
-            {
-                int result = 1 / int.Parse("0");
-            }, "DivideByZeroExceptionでありArgumentExceptionではない");
-        }
-
-        [Test]
-        public void Fail_GreaterThan_WrongComparison()
-        {
-            Assert.Greater(3, 5, "3は5より大きくない");
-        }
-
-        [Test]
-        public void Fail_LessThan_WrongComparison()
-        {
-            Assert.Less(10, 5, "10は5より小さくない");
         }
     }
 }

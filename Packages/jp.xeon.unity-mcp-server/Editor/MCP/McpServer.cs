@@ -36,6 +36,8 @@ namespace UnityMcp
         {
             Start();
             EditorApplication.quitting += Stop;
+            // ドメインリロード前にリスナーを閉じないと、リロード後の Start で同じポートを bind できず起動失敗する
+            AssemblyReloadEvents.beforeAssemblyReload += StopForReload;
         }
 
         /// <summary>
@@ -45,9 +47,11 @@ namespace UnityMcp
         public static void Restart()
         {
             EditorApplication.quitting -= Stop;
+            AssemblyReloadEvents.beforeAssemblyReload -= StopForReload;
             Stop();
             Start();
             EditorApplication.quitting += Stop;
+            AssemblyReloadEvents.beforeAssemblyReload += StopForReload;
         }
 
         private static void Start()
@@ -92,8 +96,33 @@ namespace UnityMcp
         {
             // 終了・手動再起動時はセッションIDをクリアして次回は新セッションを生成する
             SessionState.EraseString(SessionIdKey);
-            listener?.Stop();
-            listener?.Close();
+            StopListener();
+        }
+
+        /// <summary>
+        /// ドメインリロード前にリスナーだけ閉じる。SessionId は保持して、リロード後の Start で復元する。
+        /// </summary>
+        private static void StopForReload()
+        {
+            StopListener();
+        }
+
+        private static void StopListener()
+        {
+            try
+            {
+                listener?.Stop();
+                listener?.Close();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[MCP] Error while closing listener: {e.Message}");
+            }
+            finally
+            {
+                listener = null;
+            }
+
             thread?.Join(TimeSpan.FromSeconds(3));
             thread = null;
         }
