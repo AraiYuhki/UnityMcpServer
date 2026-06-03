@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace UnityMcp.Tests
 {
     /// <summary>
-    /// コレクション操作のテスト（25件: 18成功 / 7失敗）
+    /// コレクション操作のテスト（18件）
     /// </summary>
     public class CollectionTests
     {
@@ -139,59 +139,6 @@ namespace UnityMcp.Tests
             var set = new HashSet<int> { 1, 2, 3 };
             set.Add(2);
             Assert.AreEqual(3, set.Count);
-        }
-
-        // --- 以下、意図的に失敗するテスト ---
-
-        [Test]
-        public void Fail_List_Add_WrongCount()
-        {
-            var list = new List<int> { 1, 2, 3 };
-            list.Add(4);
-            Assert.AreEqual(3, list.Count, "追加後は4件であり3ではない");
-        }
-
-        [Test]
-        public void Fail_Dictionary_MissingKey_Throws()
-        {
-            var dict = new Dictionary<string, int> { { "a", 1 } };
-            Assert.AreEqual(0, dict["b"], "存在しないキーアクセスは例外になる");
-        }
-
-        [Test]
-        public void Fail_Array_ReverseExpectation()
-        {
-            var arr = new[] { 3, 1, 2 };
-            System.Array.Sort(arr);
-            Assert.AreEqual(new[] { 3, 2, 1 }, arr, "Sortは昇順であり降順ではない");
-        }
-
-        [Test]
-        public void Fail_Linq_Sum_WrongTotal()
-        {
-            var numbers = new[] { 1, 2, 3 };
-            Assert.AreEqual(7, numbers.Sum(), "1+2+3=6であり7ではない");
-        }
-
-        [Test]
-        public void Fail_Linq_All_NotAllMatch()
-        {
-            var numbers = new[] { 1, 2, 3 };
-            Assert.IsTrue(numbers.All(n => n > 1), "1は1より大きくないのでfalse");
-        }
-
-        [Test]
-        public void Fail_List_IndexOf_NotFound()
-        {
-            var list = new List<int> { 1, 2, 3 };
-            Assert.AreEqual(3, list.IndexOf(99), "存在しない要素は-1を返す");
-        }
-
-        [Test]
-        public void Fail_HashSet_Contains_WrongElement()
-        {
-            var set = new HashSet<string> { "a", "b", "c" };
-            Assert.IsTrue(set.Contains("d"), "dは含まれていない");
         }
     }
 }

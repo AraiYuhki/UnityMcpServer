@@ -3,7 +3,7 @@ using NUnit.Framework;
 namespace UnityMcp.Tests
 {
     /// <summary>
-    /// 文字列操作のテスト（25件: 17成功 / 8失敗）
+    /// 文字列操作のテスト（17件）
     /// </summary>
     public class StringTests
     {
@@ -108,58 +108,6 @@ namespace UnityMcp.Tests
         public void Format_InterpolatesCorrectly()
         {
             Assert.AreEqual("Count: 5", string.Format("Count: {0}", 5));
-        }
-
-        // --- 以下、意図的に失敗するテスト ---
-
-        [Test]
-        public void Fail_Concat_WrongExpectation()
-        {
-            Assert.AreEqual("Hello World", "Hello" + "World", "スペースがないため不一致");
-        }
-
-        [Test]
-        public void Fail_ToUpper_CaseSensitive()
-        {
-            Assert.AreEqual("hello", "hello".ToUpper(), "ToUpperはHELLOを返す");
-        }
-
-        [Test]
-        public void Fail_Length_WrongCount()
-        {
-            Assert.AreEqual(6, "Hello".Length, "Helloは5文字であり6ではない");
-        }
-
-        [Test]
-        public void Fail_Contains_CaseSensitive()
-        {
-            Assert.IsTrue("Hello".Contains("hello"), "Containsは大文字小文字を区別する");
-        }
-
-        [Test]
-        public void Fail_Replace_OriginalUnchanged()
-        {
-            var original = "Hello";
-            original.Replace("Hello", "World");
-            Assert.AreEqual("World", original, "Replaceは新しい文字列を返し元は変更しない");
-        }
-
-        [Test]
-        public void Fail_Trim_DoesNotRemoveMiddle()
-        {
-            Assert.AreEqual("HelloWorld", "Hello World".Trim(), "Trimは中間のスペースを除去しない");
-        }
-
-        [Test]
-        public void Fail_IndexOf_NotFound_ReturnsWrong()
-        {
-            Assert.AreEqual(0, "Hello".IndexOf('z'), "見つからない場合は-1を返す");
-        }
-
-        [Test]
-        public void Fail_Substring_OutOfRange()
-        {
-            Assert.AreEqual("Hello", "Hi".Substring(0, 5), "範囲外アクセスで例外が発生する");
         }
     }
 }

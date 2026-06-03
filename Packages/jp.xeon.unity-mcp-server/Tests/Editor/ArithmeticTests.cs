@@ -3,7 +3,7 @@ using NUnit.Framework;
 namespace UnityMcp.Tests
 {
     /// <summary>
-    /// 算術演算のテスト（25件: 18成功 / 7失敗）
+    /// 算術演算のテスト（18件）
     /// </summary>
     public class ArithmeticTests
     {
@@ -113,50 +113,6 @@ namespace UnityMcp.Tests
         public void Abs_OfNegative_ReturnsPositive()
         {
             Assert.AreEqual(42, System.Math.Abs(-42));
-        }
-
-        // --- 以下、意図的に失敗するテスト ---
-
-        [Test]
-        public void Fail_Add_WrongExpectation()
-        {
-            Assert.AreEqual(5, 2 + 2, "2+2は5ではない");
-        }
-
-        [Test]
-        public void Fail_Subtract_OffByOne()
-        {
-            Assert.AreEqual(3, 10 - 8, "10-8は3ではなく2");
-        }
-
-        [Test]
-        public void Fail_Multiply_WrongSign()
-        {
-            Assert.AreEqual(-6, 2 * 3, "2*3は-6ではない");
-        }
-
-        [Test]
-        public void Fail_Divide_ExpectsFloat()
-        {
-            Assert.AreEqual(3.5, 7 / 2, "整数除算では3.5にならない");
-        }
-
-        [Test]
-        public void Fail_Modulo_WrongRemainder()
-        {
-            Assert.AreEqual(2, 10 % 3, "10%3は2ではなく1");
-        }
-
-        [Test]
-        public void Fail_Sqrt_Of2_IsNot1()
-        {
-            Assert.AreEqual(1.0, System.Math.Sqrt(2), 0.001, "sqrt(2)は1ではない");
-        }
-
-        [Test]
-        public void Fail_LargeAddition_Overflow()
-        {
-            Assert.AreEqual(0, int.MaxValue - 1, "オーバーフローで0にはならない");
         }
     }
 }
