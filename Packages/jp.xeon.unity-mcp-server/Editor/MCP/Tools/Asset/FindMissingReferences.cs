@@ -1,7 +1,7 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -131,8 +131,11 @@ namespace UnityMcp.Tools.Asset
                 {
                     continue;
                 }
-
+#if UNITY_6000_5_OR_NEWER
+                if (prop.objectReferenceValue == null && prop.objectReferenceEntityIdValue != EntityId.None)
+#else
                 if (prop.objectReferenceValue == null && prop.objectReferenceInstanceIDValue != 0)
+#endif
                 {
                     items.Add(MissingReferenceItem.ForMissingField(gameObjectPath, component, prop.name));
                 }

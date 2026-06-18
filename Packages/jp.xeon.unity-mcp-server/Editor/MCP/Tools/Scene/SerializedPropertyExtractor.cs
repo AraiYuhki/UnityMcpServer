@@ -115,8 +115,11 @@ namespace UnityMcp.Tools.Scene
             {
                 return $"{prop.objectReferenceValue.name} ({prop.objectReferenceValue.GetType().Name})";
             }
-
+#if UNITY_6000_5_OR_NEWER
+            return prop.objectReferenceEntityIdValue != EntityId.None ? "Missing" : "null";
+#else
             return prop.objectReferenceInstanceIDValue != 0 ? "Missing" : "null";
+#endif
         }
     }
 }

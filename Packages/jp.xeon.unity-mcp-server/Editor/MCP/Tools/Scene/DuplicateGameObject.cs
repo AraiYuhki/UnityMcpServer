@@ -1,6 +1,6 @@
+using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -50,7 +50,11 @@ namespace UnityMcp.Tools.Scene
 
             var originalPath = GetHierarchyPath(original.transform);
             var newPath = GetHierarchyPath(duplicate.transform);
+#if UNITY_6000_5_OR_NEWER
+            var result = new DuplicateGameObjectResult(originalPath, newPath, duplicate.GetEntityId());
+#else
             var result = new DuplicateGameObjectResult(originalPath, newPath, duplicate.GetInstanceID());
+#endif
             return Task.FromResult<object>(result);
         }
 
@@ -137,12 +141,20 @@ namespace UnityMcp.Tools.Scene
         public string NewPath { get; private set; }
 
         [JsonProperty("newInstanceId")]
+#if UNITY_6000_5_OR_NEWER
+        public EntityId NewInstanceId { get; private set; }
+#else
         public int NewInstanceId { get; private set; }
+#endif
 
         [JsonProperty("message")]
         public string Message { get; private set; }
 
+#if UNITY_6000_5_OR_NEWER
+        public DuplicateGameObjectResult(string originalPath, string newPath, EntityId newInstanceId)
+#else
         public DuplicateGameObjectResult(string originalPath, string newPath, int newInstanceId)
+#endif
         {
             OriginalPath = originalPath;
             NewPath = newPath;

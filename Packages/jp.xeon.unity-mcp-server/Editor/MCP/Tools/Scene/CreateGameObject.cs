@@ -1,9 +1,9 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -48,8 +48,11 @@ namespace UnityMcp.Tools.Scene
 
             Undo.RegisterCreatedObjectUndo(go, $"Create GameObject '{parameters.Name}'");
             EditorSceneManager.MarkSceneDirty(go.scene);
-
+#if UNITY_6000_5_OR_NEWER
+            var result = new CreateGameObjectResult(go.name, GetHierarchyPath(go.transform), go.GetEntityId());
+#else
             var result = new CreateGameObjectResult(go.name, GetHierarchyPath(go.transform), go.GetInstanceID());
+#endif
             return Task.FromResult<object>(result);
         }
 
@@ -222,12 +225,19 @@ namespace UnityMcp.Tools.Scene
         public string Path { get; private set; }
 
         [JsonProperty("instanceId")]
+#if UNITY_6000_5_OR_NEWER
+        public EntityId InstanceId { get; private set; }
+#else
         public int InstanceId { get; private set; }
+#endif
 
         [JsonProperty("message")]
         public string Message { get; private set; }
-
+#if UNITY_6000_5_OR_NEWER
+        public CreateGameObjectResult(string name, string path, EntityId instanceId)
+#else
         public CreateGameObjectResult(string name, string path, int instanceId)
+#endif
         {
             Name = name;
             Path = path;
