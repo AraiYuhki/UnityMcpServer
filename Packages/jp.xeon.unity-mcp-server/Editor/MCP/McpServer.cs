@@ -34,6 +34,10 @@ namespace UnityMcp
 
         static McpServer()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
             Start();
             EditorApplication.quitting += Stop;
             // ドメインリロード前にリスナーを閉じないと、リロード後の Start で同じポートを bind できず起動失敗する
