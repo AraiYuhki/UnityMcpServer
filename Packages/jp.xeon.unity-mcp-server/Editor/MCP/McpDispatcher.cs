@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using UnityEditor;
+using UnityEngine;
 
 namespace UnityMcp
 {
@@ -20,6 +21,10 @@ namespace UnityMcp
 
         static McpDispatcher()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
             // EditorApplication.updateはメインスレッドで毎フレーム呼び出される
             EditorApplication.update += Drain;
         }
@@ -31,6 +36,15 @@ namespace UnityMcp
         public static void Enqueue(Action action)
         {
             Queue.Enqueue(action);
+        }
+
+        /// <summary>
+        /// キューに積まれた未実行アクションをすべて破棄する
+        /// サーバー停止時に呼び出し、停止後のアクション残留を防ぐ
+        /// </summary>
+        public static void Clear()
+        {
+            while (Queue.TryDequeue(out _)) { }
         }
 
         /// <summary>
@@ -47,7 +61,7 @@ namespace UnityMcp
                 }
                 catch (Exception e)
                 {
-                    UnityEngine.Debug.LogException(e);
+                    Debug.LogException(e);
                 }
             }
         }

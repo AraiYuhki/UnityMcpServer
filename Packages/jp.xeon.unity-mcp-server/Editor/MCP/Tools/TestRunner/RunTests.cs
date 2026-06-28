@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
 
@@ -37,8 +38,10 @@ namespace UnityMcp
         {
             var completionSource = new TaskCompletionSource<object>();
 
-            // アプリケーション終了時にタスクをキャンセル
             Application.exitCancellationToken.Register(() => completionSource.TrySetCanceled());
+
+            void OnBeforeAssemblyReload() => completionSource.TrySetCanceled();
+            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
 
             var api = new TestRunnerApi();
             var callbacks = new TestCallbacks(completionSource);
@@ -54,32 +57,27 @@ namespace UnityMcp
                     }
                 });
 
-                // タイムアウト監視を開始
                 WaitTimeout(completionSource);
 
                 return await completionSource.Task;
             }
             finally
             {
+                AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
                 api.UnregisterCallbacks(callbacks);
             }
         }
 
         /// <summary>
-        /// タイムアウトを監視し、5分経過後に例外を設定する
+        /// タイムアウトを監視する。テスト完了・アプリ終了・ドメインリロードのいずれかで停止する
         /// </summary>
         private async void WaitTimeout(TaskCompletionSource<object> completionSource)
         {
-            try
-            {
-                await Task.Delay(TimeSpan.FromMinutes(5), Application.exitCancellationToken);
-                completionSource.TrySetException(new TimeoutException("Task was timeout (5 minutes)"));
-            }
-            catch (OperationCanceledException)
-            {
-                // アプリケーション終了時のキャンセルは正常動作として無視
-                completionSource.TrySetCanceled();
-            }
+            await Task.WhenAny(
+                completionSource.Task,
+                Task.Delay(TimeSpan.FromMinutes(5), Application.exitCancellationToken)
+            );
+            completionSource.TrySetException(new TimeoutException("Task was timeout (5 minutes)"));
         }
     }
 }

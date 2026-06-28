@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Compilation;
+using UnityEngine;
 
 namespace UnityMcp.Tools.Compile
 {
@@ -15,6 +16,10 @@ namespace UnityMcp.Tools.Compile
 
         static CompilationCache()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
             CompilationPipeline.compilationStarted += OnCompilationStarted;
             CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompilationFinished;
         }

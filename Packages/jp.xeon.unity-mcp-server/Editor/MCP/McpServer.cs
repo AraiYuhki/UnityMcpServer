@@ -113,6 +113,8 @@ namespace UnityMcp
 
         private static void StopListener()
         {
+            McpDispatcher.Clear();
+
             try
             {
                 listener?.Stop();
@@ -312,7 +314,8 @@ namespace UnityMcp
 
         private static void WaitWhileListening()
         {
-            while (listener != null && listener.IsListening)
+            HttpListener current;
+            while ((current = listener) != null && current.IsListening)
             {
                 Thread.Sleep(1000);
             }

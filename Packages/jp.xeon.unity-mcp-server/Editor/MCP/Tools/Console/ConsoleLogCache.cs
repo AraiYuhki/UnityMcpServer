@@ -18,6 +18,10 @@ namespace UnityMcp.Tools.Console
 
         static ConsoleLogCache()
         {
+            if (Application.isBatchMode)
+            {
+                return;
+            }
             Application.logMessageReceivedThreaded += OnLogReceived;
         }
 
