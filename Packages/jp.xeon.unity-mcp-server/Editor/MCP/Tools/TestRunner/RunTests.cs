@@ -40,7 +40,15 @@ namespace UnityMcp
 
             Application.exitCancellationToken.Register(() => completionSource.TrySetCanceled());
 
-            void OnBeforeAssemblyReload() => completionSource.TrySetCanceled();
+            void OnBeforeAssemblyReload()
+            {
+                // PlayModeテストはPlay Mode移行時のドメインリロードではキャンセルしない
+                if (testMode == TestMode.PlayMode && EditorApplication.isPlayingOrWillChangePlaymode)
+                {
+                    return;
+                }
+                completionSource.TrySetCanceled();
+            }
             AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
 
             var api = new TestRunnerApi();
