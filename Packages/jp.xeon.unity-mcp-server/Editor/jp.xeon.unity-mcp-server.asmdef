@@ -2,7 +2,9 @@
     "name": "jp.xeon.unity-mcp-server",
     "rootNamespace": "UnityMcp",
     "references": [
-        "GUID:0acc523941302664db1f4e527237feb3"
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [
         "Editor"
@@ -13,6 +15,17 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "MCP_INPUT_SYSTEM"
+        },
+        {
+            "name": "com.unity.ugui",
+            "expression": "1.0.0",
+            "define": "MCP_UGUI"
+        }
+    ],
     "noEngineReferences": false
 }

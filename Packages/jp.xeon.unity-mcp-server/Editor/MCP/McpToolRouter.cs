@@ -10,6 +10,9 @@ using UnityMcp.Tools.Editor;
 using UnityMcp.Tools.Material;
 using UnityMcp.Tools.Prefab;
 using UnityMcp.Tools.Scene;
+#if MCP_INPUT_SYSTEM || MCP_UGUI
+using UnityMcp.Tools.InputSimulation;
+#endif
 
 namespace UnityMcp
 {
@@ -87,6 +90,13 @@ namespace UnityMcp
             TryRegisterTool(new BakeNavMesh());
             TryRegisterTool(new GetBuildSettings());
             TryRegisterTool(new BuildProject());
+#if MCP_INPUT_SYSTEM
+            TryRegisterTool(new SimulateKeyboard());
+            TryRegisterTool(new SimulateMouse());
+#endif
+#if MCP_UGUI
+            TryRegisterTool(new SimulateUiClick());
+#endif
         }
 
         /// <summary>

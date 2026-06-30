@@ -71,6 +71,9 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 | `find_missing_references` | シーン・Prefab内のMissing Referenceを検索 |
 | `get_asset_list` | 指定パス以下のアセット一覧を取得 |
 | `get_console_logs` | Consoleのログ一覧を取得 |
+| `simulate_keyboard` | キーボード入力をシミュレート（PlayMode・Input System必須） |
+| `simulate_mouse` | マウス入力をシミュレート（PlayMode・Input System必須） |
+| `simulate_ui_click` | uGUI要素のクリックをシミュレート（PlayMode・uGUI必須） |
 
 ### リクエスト形式
 
