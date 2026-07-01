@@ -1,7 +1,7 @@
 #if MCP_UGUI
+using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -123,7 +123,7 @@ namespace UnityMcp.Tools.InputSimulation
             return child != null ? child.gameObject : null;
         }
 
-        private static GameObject FindRoot(Scene scene, string name)
+        private static GameObject FindRoot(UnityEngine.SceneManagement.Scene scene, string name)
         {
             foreach (var go in scene.GetRootGameObjects())
             {
