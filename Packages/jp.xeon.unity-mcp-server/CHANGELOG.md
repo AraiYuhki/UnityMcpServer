@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-01
+
+### Added
+
+- PlayMode 中にゲーム/UI へ入力を注入する MCP ツールを追加
+  - `simulate_keyboard`: Input System の低レベル API でキー入力を注入（InputAction 向け）
+  - `simulate_mouse`: 座標移動・ボタン・スクロールを注入
+  - `simulate_ui_click`: uGUI の ExecuteEvents で UI 要素を直接クリック
+  - Input System / uGUI が未導入のプロジェクトでも壊れないよう、asmdef の versionDefines（MCP_INPUT_SYSTEM / MCP_UGUI）で条件コンパイル
+
 ## [1.1.1] - 2026-06-28
 
 ### Fixed
