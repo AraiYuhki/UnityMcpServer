@@ -33,7 +33,7 @@ namespace UnityMcp.Tools.InputSimulation
             "\"scroll\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"}},\"description\":\"Scroll delta for the 'scroll' action. Optional.\"}" +
             "},\"required\":[]}";
 
-        public Task<object> Execute(string args)
+        public async Task<object> Execute(string args)
         {
             if (!EditorApplication.isPlaying)
             {
@@ -44,24 +44,23 @@ namespace UnityMcp.Tools.InputSimulation
             var mouse = Mouse.current ?? InputSystem.AddDevice<Mouse>();
             var position = ResolvePosition(parameters, mouse);
 
-            var result = Dispatch(parameters, mouse, position);
-            return Task.FromResult<object>(result);
+            return await Dispatch(parameters, mouse, position);
         }
 
-        private static SimulateMouseResult Dispatch(SimulateMouseArgs parameters, Mouse mouse, Vector2 position)
+        private static Task<SimulateMouseResult> Dispatch(SimulateMouseArgs parameters, Mouse mouse, Vector2 position)
         {
             switch (parameters.Action)
             {
                 case "move":
-                    return Move(mouse, position);
+                    return Task.FromResult(Move(mouse, position));
                 case "press":
-                    return SetButton(mouse, position, parameters.Button, true);
+                    return Task.FromResult(SetButton(mouse, position, parameters.Button, true));
                 case "release":
-                    return SetButton(mouse, position, parameters.Button, false);
+                    return Task.FromResult(SetButton(mouse, position, parameters.Button, false));
                 case "click":
                     return Click(mouse, position, parameters.Button);
                 case "scroll":
-                    return Scroll(mouse, position, parameters.Scroll);
+                    return Task.FromResult(Scroll(mouse, position, parameters.Scroll));
                 default:
                     throw new InvalidOperationException($"Unknown action: '{parameters.Action}'.");
             }
@@ -83,10 +82,11 @@ namespace UnityMcp.Tools.InputSimulation
             return BuildResult(action, position, $"{action} {mouseButton} button at {position}.");
         }
 
-        private static SimulateMouseResult Click(Mouse mouse, Vector2 position, string button)
+        private static async Task<SimulateMouseResult> Click(Mouse mouse, Vector2 position, string button)
         {
             var mouseButton = ParseButton(button);
             QueueState(mouse, new MouseState { position = position }.WithButton(mouseButton, true));
+            await InputSimulationUtility.WaitForNextPlayerLoopFrameAsync();
             QueueState(mouse, new MouseState { position = position }.WithButton(mouseButton, false));
             return BuildResult("click", position, $"Clicked {mouseButton} button at {position}.");
         }
@@ -101,7 +101,10 @@ namespace UnityMcp.Tools.InputSimulation
         private static void QueueState(Mouse mouse, MouseState state)
         {
             InputSystem.QueueStateEvent(mouse, state);
-            InputSystem.Update();
+
+            // エディタループから InputSystem.Update() を呼ぶとエディタ用バッファに消費されて
+            // プレイモード側に反映されないため、プレイヤーループへ処理を委ねる。
+            EditorApplication.QueuePlayerLoopUpdate();
         }
 
         private static Vector2 ResolvePosition(SimulateMouseArgs parameters, Mouse mouse)
@@ -143,6 +146,12 @@ namespace UnityMcp.Tools.InputSimulation
 
         private static SimulateMouseResult BuildResult(string action, Vector2 position, string message)
         {
+            var warning = InputSimulationUtility.CheckEditorInputBehaviorWarning();
+            if (warning != null)
+            {
+                message = $"{message} {warning}";
+            }
+
             return new SimulateMouseResult
             {
                 Ok = true,

@@ -29,7 +29,7 @@ namespace UnityMcp.Tools.InputSimulation
             "\"action\":{\"type\":\"string\",\"enum\":[\"press\",\"release\",\"tap\"],\"description\":\"press: hold keys, release: release all keys, tap: press then release. Default: tap.\"}" +
             "},\"required\":[\"keys\"]}";
 
-        public Task<object> Execute(string args)
+        public async Task<object> Execute(string args)
         {
             if (!EditorApplication.isPlaying)
             {
@@ -40,18 +40,17 @@ namespace UnityMcp.Tools.InputSimulation
             var keyboard = Keyboard.current ?? InputSystem.AddDevice<Keyboard>();
             var keys = ParseKeys(parameters.Keys);
 
-            var result = Dispatch(parameters.Action, keyboard, keys);
-            return Task.FromResult<object>(result);
+            return await Dispatch(parameters.Action, keyboard, keys);
         }
 
-        private static SimulateKeyboardResult Dispatch(string action, Keyboard keyboard, Key[] keys)
+        private static Task<SimulateKeyboardResult> Dispatch(string action, Keyboard keyboard, Key[] keys)
         {
             switch (action)
             {
                 case "press":
-                    return Press(keyboard, keys);
+                    return Task.FromResult(Press(keyboard, keys));
                 case "release":
-                    return Release(keyboard);
+                    return Task.FromResult(Release(keyboard));
                 case "tap":
                     return Tap(keyboard, keys);
                 default:
@@ -72,10 +71,11 @@ namespace UnityMcp.Tools.InputSimulation
             return BuildResult("release", Array.Empty<Key>(), "Released all keys.");
         }
 
-        private static SimulateKeyboardResult Tap(Keyboard keyboard, Key[] keys)
+        private static async Task<SimulateKeyboardResult> Tap(Keyboard keyboard, Key[] keys)
         {
             RequireKeys(keys, "tap");
             QueueState(keyboard, keys);
+            await InputSimulationUtility.WaitForNextPlayerLoopFrameAsync();
             QueueState(keyboard, Array.Empty<Key>());
             return BuildResult("tap", keys, $"Tapped {keys.Length} key(s).");
         }
@@ -83,7 +83,10 @@ namespace UnityMcp.Tools.InputSimulation
         private static void QueueState(Keyboard keyboard, Key[] keys)
         {
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys));
-            InputSystem.Update();
+
+            // エディタループから InputSystem.Update() を呼ぶとエディタ用バッファに消費されて
+            // プレイモード側に反映されないため、プレイヤーループへ処理を委ねる。
+            EditorApplication.QueuePlayerLoopUpdate();
         }
 
         private static void RequireKeys(Key[] keys, string action)
@@ -126,6 +129,12 @@ namespace UnityMcp.Tools.InputSimulation
             for (var i = 0; i < keys.Length; i++)
             {
                 names[i] = keys[i].ToString();
+            }
+
+            var warning = InputSimulationUtility.CheckEditorInputBehaviorWarning();
+            if (warning != null)
+            {
+                message = $"{message} {warning}";
             }
 
             return new SimulateKeyboardResult

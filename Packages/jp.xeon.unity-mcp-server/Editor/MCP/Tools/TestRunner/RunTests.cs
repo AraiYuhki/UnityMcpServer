@@ -1,13 +1,13 @@
-﻿using System;
 using System.Threading.Tasks;
-using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
-using UnityEngine;
 
 namespace UnityMcp
 {
     /// <summary>
-    /// Unity Test Runnerを使用してテストを実行するツール
+    /// Unity Test Runnerでテストを開始するツール
+    /// PlayModeテストはPlay Mode移行時にドメインリロードが発生し、開始要求元のawaitが
+    /// 消滅してしまうため、このツールはテストを開始した事実のみを即時返す。
+    /// 結果は対応するget_*_test_resultsツールでポーリングする。
     /// </summary>
     public class RunTests : IMcpTool
     {
@@ -15,7 +15,7 @@ namespace UnityMcp
         public string Description { get; }
         public string InputSchema { get; } = "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
 
-        private TestMode testMode;
+        private readonly TestMode testMode;
 
         /// <summary>
         /// コンストラクタ
@@ -31,61 +31,34 @@ namespace UnityMcp
         }
 
         /// <summary>
-        /// 指定されたモードでテストを実行する
+        /// 指定されたモードでテストを開始する。完了は待たない。
         /// </summary>
-        /// <returns>テスト結果のサマリー</returns>
-        public async Task<object> Execute(string _)
+        /// <returns>開始できたかどうかを示すステータス</returns>
+        public Task<object> Execute(string _)
         {
-            var completionSource = new TaskCompletionSource<object>();
-
-            Application.exitCancellationToken.Register(() => completionSource.TrySetCanceled());
-
-            void OnBeforeAssemblyReload()
+            if (TestRunSessionState.IsRunning(testMode))
             {
-                // PlayModeテストはPlay Mode移行時のドメインリロードではキャンセルしない
-                if (testMode == TestMode.PlayMode && EditorApplication.isPlayingOrWillChangePlaymode)
+                return Task.FromResult<object>(new TestRunStatus
                 {
-                    return;
-                }
-                completionSource.TrySetCanceled();
-            }
-            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
-
-            var api = new TestRunnerApi();
-            var callbacks = new TestCallbacks(completionSource);
-            api.RegisterCallbacks(callbacks);
-
-            try
-            {
-                api.Execute(new ExecutionSettings
-                {
-                    filters = new[]
-                    {
-                        new Filter { testMode = testMode }
-                    }
+                    Status = "running",
+                    Message = $"{testMode} tests are already running. Poll the corresponding get_*_test_results tool."
                 });
-
-                WaitTimeout(completionSource);
-
-                return await completionSource.Task;
             }
-            finally
+
+            TestRunSessionState.MarkRunning(testMode);
+            TestRunCallbackRegistrar.Api.Execute(new ExecutionSettings
             {
-                AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
-                api.UnregisterCallbacks(callbacks);
-            }
-        }
+                filters = new[]
+                {
+                    new Filter { testMode = testMode }
+                }
+            });
 
-        /// <summary>
-        /// タイムアウトを監視する。テスト完了・アプリ終了・ドメインリロードのいずれかで停止する
-        /// </summary>
-        private async void WaitTimeout(TaskCompletionSource<object> completionSource)
-        {
-            await Task.WhenAny(
-                completionSource.Task,
-                Task.Delay(TimeSpan.FromMinutes(5), Application.exitCancellationToken)
-            );
-            completionSource.TrySetException(new TimeoutException("Task was timeout (5 minutes)"));
+            return Task.FromResult<object>(new TestRunStatus
+            {
+                Status = "started",
+                Message = $"{testMode} tests started. Poll the corresponding get_*_test_results tool for the outcome."
+            });
         }
     }
 }

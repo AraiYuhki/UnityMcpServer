@@ -64,8 +64,10 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 | ツール名 | 説明 |
 |---------|------|
 | `check_status` | サーバーの稼働状態を確認 |
-| `run_editmode_tests` | EditModeテストを実行 |
-| `run_playmode_tests` | PlayModeテストを実行 |
+| `run_editmode_tests` | EditModeテストの実行を開始（結果は`get_editmode_test_results`でポーリング） |
+| `run_playmode_tests` | PlayModeテストの実行を開始（結果は`get_playmode_test_results`でポーリング） |
+| `get_editmode_test_results` | `run_editmode_tests`の結果を取得（実行中/未実行/完了） |
+| `get_playmode_test_results` | `run_playmode_tests`の結果を取得（実行中/未実行/完了） |
 | `get_compile_errors` | 直近のコンパイルエラー・警告を取得 |
 | `get_scene_hierarchy` | 現在のシーンのGameObject階層を取得 |
 | `get_component_info` | 指定GameObjectのコンポーネント詳細を取得 |
@@ -120,13 +122,18 @@ MCP 2025-03-26 仕様に準拠した Streamable HTTP トランスポートを使
     "content": [
       {
         "type": "text",
-        "text": "{\"summary\":\"70 passed, 0 failed, 0 skipped (70 total)\", ...}"
+        "text": "{\"status\":\"started\",\"message\":\"EditMode tests started. Poll the corresponding get_*_test_results tool for the outcome.\"}"
       }
     ],
     "isError": false
   }
 }
 ```
+
+`get_editmode_test_results` / `get_playmode_test_results` を呼ぶと、実行中は
+`{"status":"running", ...}`、未実行時は `{"status":"not_started", ...}`、
+完了後は `{"status":"completed","summary":"70 passed, 0 failed, 0 skipped (70 total)", ...}`
+が返る。
 
 ### Claude Codeとの接続
 

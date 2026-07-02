@@ -1,21 +1,14 @@
-﻿using System.Threading.Tasks;
 using UnityEditor.TestTools.TestRunner.Api;
 
 namespace UnityMcp
 {
     /// <summary>
-    /// Test Runnerのコールバックを受け取り、TaskCompletionSourceに結果を設定するクラス
-    /// コールバックベースのTest Runner APIをTask/awaitパターンに変換する
+    /// Test Runnerのコールバックを受け取り、結果をSessionStateへ保存するクラス。
+    /// PlayModeテストのドメインリロードでインスタンスが失われても、
+    /// [InitializeOnLoad]で再登録されるため結果保存を継続できる。
     /// </summary>
-    public class TestCallbacks : ICallbacks
+    internal class TestCallbacks : ICallbacks
     {
-        private TaskCompletionSource<object> completionSource;
-
-        public TestCallbacks(TaskCompletionSource<object> completionSource)
-        {
-            this.completionSource = completionSource;
-        }
-
         /// <summary>
         /// テスト実行開始時に呼び出される
         /// </summary>
@@ -25,11 +18,11 @@ namespace UnityMcp
 
         /// <summary>
         /// 全テスト実行完了時に呼び出される
-        /// 結果をTaskCompletionSourceに設定してawait側に通知する
+        /// 結果をSessionStateに保存し、get_*_test_resultsからポーリングできるようにする
         /// </summary>
         public void RunFinished(ITestResultAdaptor result)
         {
-            completionSource.TrySetResult(new TestResultSummary(result));
+            TestRunSessionState.StoreResult(result.Test.TestMode, new TestResultSummary(result));
         }
 
         /// <summary>

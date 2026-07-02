@@ -91,7 +91,8 @@ Content-Type: application/json
 
 ### run_editmode_tests
 
-EditModeテストを実行します。
+EditModeテストの実行を開始します。テスト完了は待たず、開始したことだけを即座に返すため、
+結果は `get_editmode_test_results` でポーリングしてください。
 
 **リクエスト例：**
 ```json
@@ -105,13 +106,27 @@ EditModeテストを実行します。
 ```json
 {
   "ok": true,
-  "result": "{\"passed\":5,\"failed\":0,\"skipped\":0}"
+  "result": "{\"status\":\"started\",\"message\":\"EditMode tests started. Poll the corresponding get_*_test_results tool for the outcome.\"}"
+}
+```
+
+### get_editmode_test_results
+
+`run_editmode_tests` で開始したテストの進行状況・結果を取得します。
+
+**レスポンス例（完了時）：**
+```json
+{
+  "ok": true,
+  "result": "{\"status\":\"completed\",\"summary\":\"5 passed, 0 failed, 0 skipped (5 total)\",\"totalCount\":5,\"passCount\":5,\"failCount\":0,\"skipCount\":0,\"allPassed\":true,\"failures\":[]}"
 }
 ```
 
 ### run_playmode_tests
 
-PlayModeテストを実行します。
+PlayModeテストの実行を開始します。PlayMode移行時にドメインリロードが発生し
+開始要求元のawaitが失われるため、`run_editmode_tests` と同様に開始したことだけを
+即座に返します。結果は `get_playmode_test_results` でポーリングしてください。
 
 **リクエスト例：**
 ```json
@@ -120,6 +135,11 @@ PlayModeテストを実行します。
   "arguments": ""
 }
 ```
+
+### get_playmode_test_results
+
+`run_playmode_tests` で開始したテストの進行状況・結果を取得します。
+レスポンス形式は `get_editmode_test_results` と同じです。
 
 ## カスタムツールの実装
 

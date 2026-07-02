@@ -41,15 +41,27 @@ namespace UnityMcp
                 "Check if the Unity Editor is running and the MCP server is responsive. Call this before performing any Unity-related operations to verify connectivity.");
             var editModeTestTool = new RunTests(
                 "run_editmode_tests",
-                "Run all EditMode unit tests in the Unity project using Test Runner. Call this after modifying C# scripts to verify that changes don't break existing functionality. Returns a summary with pass/fail counts and details of any failures.",
+                "Start all EditMode unit tests in the Unity project using Test Runner. Call this after modifying C# scripts to verify that changes don't break existing functionality. Returns immediately once the run has started; poll 'get_editmode_test_results' for the pass/fail summary.",
                 TestMode.EditMode);
             var playModeTestTool = new RunTests(
                 "run_playmode_tests",
-                "Run all PlayMode integration tests in the Unity project using Test Runner. Call this to verify runtime behavior after changes to MonoBehaviour, physics, or scene logic. Returns a summary with pass/fail counts and details of any failures.",
+                "Start all PlayMode integration tests in the Unity project using Test Runner. Call this to verify runtime behavior after changes to MonoBehaviour, physics, or scene logic. Returns immediately once the run has started (PlayMode entry triggers a domain reload, so the result cannot be awaited directly); poll 'get_playmode_test_results' for the pass/fail summary.",
                 TestMode.PlayMode);
+            var getEditModeTestResultsTool = new GetTestResults(
+                "get_editmode_test_results",
+                "Poll the result of the EditMode test run started by 'run_editmode_tests'. Returns status 'running', 'not_started', or 'completed' with a pass/fail summary and failure details.",
+                TestMode.EditMode,
+                "run_editmode_tests");
+            var getPlayModeTestResultsTool = new GetTestResults(
+                "get_playmode_test_results",
+                "Poll the result of the PlayMode test run started by 'run_playmode_tests'. Returns status 'running', 'not_started', or 'completed' with a pass/fail summary and failure details.",
+                TestMode.PlayMode,
+                "run_playmode_tests");
             TryRegisterTool(checkStatusTool);
             TryRegisterTool(editModeTestTool);
             TryRegisterTool(playModeTestTool);
+            TryRegisterTool(getEditModeTestResultsTool);
+            TryRegisterTool(getPlayModeTestResultsTool);
             TryRegisterTool(new GetCompileErrors());
             TryRegisterTool(new GetSceneHierarchy());
             TryRegisterTool(new FindMissingReferences());
