@@ -55,7 +55,7 @@ namespace UnityMcp.Tools.InputSimulation
         public static string CheckEditorInputBehaviorWarning()
         {
             if (InputSystem.settings.editorInputBehaviorInPlayMode ==
-                InputSettings.EditorInputBehavior.PointersAndKeyboardsRespectGameViewFocus)
+                InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus)
             {
                 return "Warning: Edit > Project Settings > Input System Package > " +
                        "'Play Mode Input Behavior' is set to respect Game View focus. " +
