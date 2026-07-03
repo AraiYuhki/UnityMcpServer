@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-07-03
+
+### Fixed
+
+- `simulate_keyboard` / `simulate_mouse` の入力がPlayMode中のゲームに反映されない問題を修正
+  - `QueueState` 内で手動 `InputSystem.Update()` を呼んでいたため、エディタ用の入力ステートバッファに
+    消費されプレイモード側に届いていなかった。`EditorApplication.QueuePlayerLoopUpdate()` に変更
+  - `tap` / `click` を press → 1フレーム待機（タイムアウト付き）→ release の2段階に変更し、
+    `IsPressed` ポーリングでも押下を検出できるようにした
+  - `editorInputBehaviorInPlayMode` が既定値（ゲームビュー非フォーカス時に入力が届かない設定）の
+    ままなら結果メッセージに警告を追加
+- `run_editmode_tests` / `run_playmode_tests` が完了を返せず5分でタイムアウトする問題を修正
+  - `new TestRunnerApi()` を `ScriptableObject.CreateInstance<TestRunnerApi>()` に修正
+  - PlayModeテストのドメインリロードで完了通知が失われる問題を解消するため、非同期開始+ポーリング方式に変更。
+    `[InitializeOnLoad]` でコールバックをドメインリロード後も再登録し、結果は `SessionState` 経由で保存する
+
+### Added
+
+- `get_editmode_test_results` / `get_playmode_test_results` ツールを追加
+  （`run_editmode_tests` / `run_playmode_tests` が開始した実行の進行状況・結果をポーリングする）
+
+### Changed
+
+- `run_editmode_tests` / `run_playmode_tests` は結果を待たず、開始したことのみを即時返すようになった
+  （破壊的変更。結果は上記の新ツールでポーリングする）
+
 ## [1.2.1] - 2026-07-02
 
 ### Fixed
