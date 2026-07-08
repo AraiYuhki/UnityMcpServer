@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using UnityEditor;
@@ -21,11 +22,14 @@ namespace UnityMcp.Tools.Scene
         public string Description =>
             "Take a screenshot of the Scene view or Game view and return it as a base64-encoded JPEG image. " +
             "Use 'scene' view to capture the editor's Scene view camera, or 'game' view to capture from the main camera. " +
+            "Set includeUi to true (with view 'game') to also capture Canvas UI rendered in Screen Space - Overlay, " +
+            "which the camera cannot see on its own. Works in both Edit Mode and Play Mode. " +
             "Useful for verifying visual state of the scene.";
 
         public string InputSchema =>
             "{\"type\":\"object\",\"properties\":{" +
             "\"view\":{\"type\":\"string\",\"enum\":[\"scene\",\"game\"],\"description\":\"Which view to capture: 'scene' for Scene view camera, 'game' for main camera (default: 'scene')\",\"default\":\"scene\"}," +
+            "\"includeUi\":{\"type\":\"boolean\",\"description\":\"When true and view is 'game', temporarily render Screen Space - Overlay UI Canvas elements through the camera so they appear in the capture. (default: false)\",\"default\":false}," +
             "\"width\":{\"type\":\"integer\",\"description\":\"Image width in pixels (default: 1920)\",\"default\":1920}," +
             "\"height\":{\"type\":\"integer\",\"description\":\"Image height in pixels (default: 1080)\",\"default\":1080}," +
             "\"quality\":{\"type\":\"integer\",\"description\":\"JPEG quality 1-100 (default: 75)\",\"default\":75}" +
@@ -39,7 +43,22 @@ namespace UnityMcp.Tools.Scene
             var quality = Mathf.Clamp(parameters.Quality > 0 ? parameters.Quality : DefaultQuality, 1, 100);
 
             var camera = ResolveCamera(parameters.View);
-            var base64 = CaptureFromCamera(camera, width, height, quality);
+
+            string base64;
+            if (parameters.IncludeUi)
+            {
+                if (!string.Equals(parameters.View, "game", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("includeUi is only supported when view is 'game'.");
+                }
+
+                base64 = CaptureFromCameraWithOverlayUi(camera, width, height, quality);
+            }
+            else
+            {
+                base64 = CaptureFromCamera(camera, width, height, quality);
+            }
+
             var result = CallToolResult.SuccessImage(base64, "image/jpeg");
             return Task.FromResult<object>(result);
         }
@@ -96,6 +115,43 @@ namespace UnityMcp.Tools.Scene
             }
         }
 
+        private static string CaptureFromCameraWithOverlayUi(Camera camera, int width, int height, int quality)
+        {
+            var overlayCanvases = new List<Canvas>();
+            var originalCameras = new List<Camera>();
+            var originalPlaneDistances = new List<float>();
+
+            foreach (var canvas in UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                {
+                    continue;
+                }
+
+                overlayCanvases.Add(canvas);
+                originalCameras.Add(canvas.worldCamera);
+                originalPlaneDistances.Add(canvas.planeDistance);
+
+                canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                canvas.worldCamera = camera;
+                canvas.planeDistance = Mathf.Clamp(100f, camera.nearClipPlane + 0.01f, camera.farClipPlane - 0.01f);
+            }
+
+            try
+            {
+                return CaptureFromCamera(camera, width, height, quality);
+            }
+            finally
+            {
+                for (var i = 0; i < overlayCanvases.Count; i++)
+                {
+                    overlayCanvases[i].renderMode = RenderMode.ScreenSpaceOverlay;
+                    overlayCanvases[i].worldCamera = originalCameras[i];
+                    overlayCanvases[i].planeDistance = originalPlaneDistances[i];
+                }
+            }
+        }
+
         private static TakeScreenshotArgs ParseArgs(string args)
         {
             if (string.IsNullOrEmpty(args))
@@ -111,6 +167,9 @@ namespace UnityMcp.Tools.Scene
     {
         [JsonProperty("view")]
         public string View { get; set; } = "scene";
+
+        [JsonProperty("includeUi")]
+        public bool IncludeUi { get; set; } = false;
 
         [JsonProperty("width")]
         public int Width { get; set; } = 1920;

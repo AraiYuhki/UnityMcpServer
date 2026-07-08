@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-07-09
+
+### Added
+
+- `take_screenshot` に `includeUi` オプションを追加
+  - `view: "game"` と併用すると、Screen Space - Overlay の Canvas UIを一時的に `Screen Space - Camera` モードへ
+    切り替えてカメラで一緒にレンダリングし、撮影後は元のレンダーモード・カメラ・planeDistanceに復元する
+  - 従来の `camera.Render()` だけではScreen Space - Overlayで描画されるUIが映らなかった問題に対応
+  - Edit Mode / Play Mode どちらでも利用可能
+
 ## [1.3.0] - 2026-07-03
 
 ### Fixed
