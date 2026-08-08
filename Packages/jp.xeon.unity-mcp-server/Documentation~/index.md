@@ -143,67 +143,99 @@ PlayModeテストの実行を開始します。PlayMode移行時にドメイン�
 
 ## カスタムツールの実装
 
-`McpToolRouter.TryRegisterTool` を使用してカスタムツールを登録できます。
+`IMcpTool` を実装したクラスに `[McpTool]` 属性を付けると、サーバー起動時に自動で登録されます。
+このパッケージ外のアセンブリ（自作パッケージやプロジェクト内のEditorアセンブリ）で定義したツールも対象です。
 
 ### 基本的な実装
 
 ```csharp
-using UnityEditor;
-using UnityMcp;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using UnityMcp;
 
-[InitializeOnLoad]
-public static class MyCustomTools
+[McpTool]
+public class MyTool : IMcpTool
 {
-    static MyCustomTools()
-    {
-        // サーバー初期化時に登録
-        McpToolRouter.TryRegisterTool("my_tool", ExecuteMyTool);
-    }
+    public string Name => "my_tool";
 
-    private static Task<object> ExecuteMyTool(string arguments)
-    {
-        // 引数のパース
-        var args = JsonUtility.FromJson<MyToolArgs>(arguments);
+    public string Description => "Do something useful in the Unity Editor.";
 
-        // 処理の実行
+    public string InputSchema =>
+        "{\"type\":\"object\",\"properties\":{" +
+        "\"input\":{\"type\":\"string\",\"description\":\"Text to process\"}" +
+        "},\"required\":[\"input\"]}";
+
+    public Task<object> Execute(string args)
+    {
+        var parsed = JsonConvert.DeserializeObject<MyToolArgs>(args);
         var result = new MyToolResult
         {
-            success = true,
-            message = $"Processed: {args.input}"
+            Success = true,
+            Message = $"Processed: {parsed.Input}"
         };
-
         return Task.FromResult<object>(result);
     }
 }
 
-[System.Serializable]
 public class MyToolArgs
 {
-    public string input;
+    [JsonProperty("input")]
+    public string Input { get; set; }
 }
 
-[System.Serializable]
 public class MyToolResult
 {
-    public bool success;
-    public string message;
+    [JsonProperty("success")]
+    public bool Success { get; set; }
+
+    [JsonProperty("message")]
+    public string Message { get; set; }
 }
 ```
+
+### 自動登録の要件
+
+`[McpTool]` を付けた型は、次の条件をすべて満たす必要があります。満たさない場合はConsoleに警告を出してスキップされます。
+
+- `IMcpTool` を実装している
+- 抽象クラス・ジェネリック型定義ではない
+- 公開のパラメータなしコンストラクタを持つ
+
+また、`Name` が組み込みツールや他のカスタムツールと重複した場合、先に登録されたものが優先され、後続は警告付きでスキップされます。
+
+### 外部アセンブリから利用する場合
+
+対象のasmdefから `jp.xeon.unity-mcp-server` を参照してください（`autoReferenced` が有効なため、asmdefを持たないEditorスクリプトからは参照設定なしで利用できます）。
+このパッケージは `includePlatforms: ["Editor"]` のため、カスタムツールもEditor専用アセンブリ（`Editor` フォルダ配下、または `includePlatforms` にEditorのみを指定したasmdef）に置く必要があります。
+自動登録はサーバー初期化時に `TypeCache` で走査されるため、`[InitializeOnLoad]` を書く必要はありません。
 
 ### 非同期処理
 
-長時間かかる処理は非同期で実装できます：
+長時間かかる処理は `Execute` を `async` にして実装できます：
 
 ```csharp
-private static async Task<object> LongRunningTool(string arguments)
+public async Task<object> Execute(string args)
 {
-    // 非同期処理
     await Task.Delay(1000);
-
     return new { completed = true };
 }
 ```
+
+### 明示的に登録する
+
+動的に生成したツールなど、属性で宣言できないものは `McpToolRouter.TryRegisterTool(IMcpTool)` で登録できます。
+デリゲートをツール化する `CommonMcpTool` も利用できます。
+
+```csharp
+McpToolRouter.TryRegisterTool(new CommonMcpTool(
+    "my_dynamic_tool",
+    args => Task.FromResult<object>(new { ok = true }),
+    "A dynamically registered tool."));
+```
+
+ただし `McpToolRouter.Initialize()` は登録済みツールをクリアしてから組み込みツールを登録するため、
+サーバー起動やドメインリロードのタイミングによっては登録内容が失われます。
+恒久的に有効にしたいツールには `[McpTool]` による自動登録を使用してください。
 
 ## アーキテクチャ
 

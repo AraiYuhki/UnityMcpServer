@@ -160,28 +160,33 @@ Claude Codeを起動（または再起動）すると、自動的にMCPサーバ
 
 ### カスタムツールの登録
 
-`McpToolRouter.TryRegisterTool` を使用してカスタムツールを登録できます：
+`IMcpTool` を実装したクラスに `[McpTool]` 属性を付けると、サーバー起動時に自動で登録されます。
+このパッケージ外のアセンブリで定義したツールも対象です：
 
 ```csharp
 using UnityMcp;
 using System.Threading.Tasks;
 
-[InitializeOnLoad]
-public static class MyCustomTools
+[McpTool]
+public class MyCustomTool : IMcpTool
 {
-    static MyCustomTools()
-    {
-        McpToolRouter.TryRegisterTool("my_custom_tool", MyCustomTool);
-    }
+    public string Name => "my_custom_tool";
 
-    private static Task<object> MyCustomTool(string arguments)
+    public string Description => "Say hello from the Unity Editor.";
+
+    public string InputSchema => "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
+
+    public Task<object> Execute(string args)
     {
-        // 引数をパースして処理を実行
         var result = new { message = "Hello from Unity!" };
         return Task.FromResult<object>(result);
     }
 }
 ```
+
+`[McpTool]` を付けた型は `IMcpTool` を実装し、公開のパラメータなしコンストラクタを持つ必要があります。
+名前が既存ツールと重複した場合は警告付きでスキップされます。
+動的に生成するツールは `McpToolRouter.TryRegisterTool(IMcpTool)` でも登録できます。詳細は `Documentation~/index.md` を参照してください。
 
 ## ライセンス
 

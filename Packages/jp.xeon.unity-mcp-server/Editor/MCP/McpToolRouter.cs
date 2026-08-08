@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEditor.TestTools.TestRunner.Api;
+using UnityEngine;
 using UnityMcp.Tools.Animation;
 using UnityMcp.Tools.Asset;
 using UnityMcp.Tools.Compile;
@@ -110,6 +111,32 @@ namespace UnityMcp
             TryRegisterTool(new SimulateUiClick());
             TryRegisterTool(new SimulateUiDrag());
 #endif
+            RegisterDiscoveredTools();
+        }
+
+        /// <summary>
+        /// [McpTool]属性が付与されたツールを収集して登録する。
+        /// 組み込みツールの登録後に呼ぶことで、外部ツールが組み込みツールを上書きしないようにする。
+        /// </summary>
+        private static void RegisterDiscoveredTools()
+        {
+            var tools = McpToolDiscovery.CollectTools();
+            foreach (var tool in tools)
+            {
+                RegisterDiscoveredTool(tool);
+            }
+        }
+
+        /// <summary>
+        /// 自動収集したツールを登録する。名前が衝突した場合は警告を出して登録しない。
+        /// </summary>
+        private static void RegisterDiscoveredTool(IMcpTool tool)
+        {
+            if (TryRegisterTool(tool))
+            {
+                return;
+            }
+            Debug.LogWarning($"[MCP] Tool name '{tool.Name}' from {tool.GetType().FullName} is already registered. Skipped.");
         }
 
         /// <summary>

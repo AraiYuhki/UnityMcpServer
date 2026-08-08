@@ -697,9 +697,41 @@ var json = JsonUtility.ToJson(summary);
 
 ### カスタムツールの登録方法
 
-ツールの登録は `McpToolRouter` を通じて行う。2つの登録方法がある。
+ツールの登録は `McpToolRouter` を通じて行う。3つの登録方法がある。
 
-#### 方法1: IMcpTool実装クラスを登録
+#### 方法1: [McpTool]属性による自動登録（推奨）
+
+`IMcpTool` を実装したクラスに `[McpTool]` を付けると、`McpToolRouter.Initialize()` が
+`TypeCache` でプロジェクト全体を走査して自動登録する。このパッケージ外のEditorアセンブリも対象。
+
+```csharp
+[McpTool]
+public class MyCustomTool : IMcpTool
+{
+    public string Name => "my_custom_tool";
+    public string Description => "カスタムツールの説明";
+    public string InputSchema => "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
+
+    public Task<object> Execute(string arguments)
+    {
+        return Task.FromResult<object>("実行結果");
+    }
+}
+```
+
+自動登録には次の条件が必要で、満たさない型は警告を出してスキップされる。
+
+- `IMcpTool` を実装している
+- 抽象クラス・ジェネリック型定義ではない
+- 公開のパラメータなしコンストラクタを持つ
+
+自動登録は組み込みツールの登録**後**に行われるため、組み込みツールを上書きすることはない。
+
+#### 方法2: IMcpTool実装クラスを明示的に登録
+
+コンストラクタ引数が必要なツールなど、属性で宣言できないものはこちらを使う。
+ただし `Initialize()` は登録済みツールをクリアするため、`[InitializeOnLoad]` からの登録は
+実行順によっては失われる。恒久的に有効にしたいツールは方法1を使うこと。
 
 ```csharp
 // IMcpToolを実装したクラスを作成
@@ -731,18 +763,15 @@ var tool = new MyCustomTool();
 McpToolRouter.TryRegisterTool(tool);
 ```
 
-#### 方法2: デリゲートで簡易登録
+#### 方法3: デリゲートで簡易登録
 
-パラメータなしのシンプルなツールは `CommonMcpTool` を経由してデリゲートで登録できる。
+パラメータなしのシンプルなツールは `CommonMcpTool` でデリゲートをラップして登録できる。
 
 ```csharp
-// デリゲートで登録（CommonMcpToolが内部で生成される）
-McpToolRouter.TryRegisterTool("check_status", CheckStatus);
-
-private static Task<object> CheckStatus(string _)
-{
-    return Task.FromResult<object>(true);
-}
+McpToolRouter.TryRegisterTool(new CommonMcpTool(
+    "my_dynamic_tool",
+    args => Task.FromResult<object>(true),
+    "A dynamically registered tool."));
 ```
 
 `TryRegisterTool` は同名のツールが既に登録されている場合に `false` を返す（上書きしない）。

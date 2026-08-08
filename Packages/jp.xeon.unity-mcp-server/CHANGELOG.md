@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-08-08
+
+### Added
+
+- `[McpTool]` 属性によるカスタムツールの自動登録に対応
+  - `TypeCache` でプロジェクト全体を走査するため、パッケージ外のアセンブリで定義したツールも登録される
+  - `[InitializeOnLoad]` での手動登録が `McpToolRouter.Initialize()` のクリア処理と競合し、
+    ドメインリロードのタイミングによってツールが失われる問題を回避できる
+  - 要件を満たさない型・名前が重複した型は警告を出してスキップする
+
+### Fixed
+
+- README / `Documentation~/index.md` / `ImplementationGuid.md` のカスタムツール登録サンプルが、
+  存在しない `TryRegisterTool(string, Func<string, Task<object>>)` を使用していたのを修正
+
 ## [1.5.0] - 2026-08-08
 
 ### Added
