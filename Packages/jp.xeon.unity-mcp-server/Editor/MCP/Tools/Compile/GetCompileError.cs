@@ -14,8 +14,10 @@ namespace UnityMcp.Tools.Compile
 
         public string Description =>
             "Get compile errors and warnings from the last compilation. " +
-            "Returns error/warning counts and detailed messages with file paths and line numbers. " +
-            "Call this after modifying C# scripts to check for compilation issues.";
+            "Returns error/warning counts and detailed messages with file paths and line numbers, " +
+            "plus 'state' (idle/pending/compiling/completed) and 'isStale'. " +
+            "IMPORTANT: when isStale is true the messages are from the PREVIOUS compilation and must not be " +
+            "treated as the current result; call 'compile_and_wait' instead to get a settled result.";
 
         public string InputSchema =>
             "{\"type\":\"object\",\"properties\":{" +
@@ -25,9 +27,10 @@ namespace UnityMcp.Tools.Compile
         public Task<object> Execute(string args)
         {
             var parameters = ParseArgs(args);
+            var state = CompilationCache.State;
             var allMessages = CompilationCache.GetMessages();
             var filtered = FilterMessages(allMessages, parameters.IncludeWarnings);
-            return Task.FromResult<object>(new CompileResult(filtered));
+            return Task.FromResult<object>(new CompileResult(filtered, state));
         }
 
         private static GetCompileErrorsArgs ParseArgs(string args)

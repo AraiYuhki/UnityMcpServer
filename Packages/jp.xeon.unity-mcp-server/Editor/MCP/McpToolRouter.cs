@@ -63,6 +63,7 @@ namespace UnityMcp
             TryRegisterTool(getEditModeTestResultsTool);
             TryRegisterTool(getPlayModeTestResultsTool);
             TryRegisterTool(new GetCompileErrors());
+            TryRegisterTool(new CompileAndWait());
             TryRegisterTool(new GetSceneHierarchy());
             TryRegisterTool(new FindMissingReferences());
             TryRegisterTool(new GetAssetList());
