@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
 using UnityEditor;
@@ -27,10 +27,11 @@ namespace UnityMcp
         /// <summary>ドメインリロードをまたいでセッションIDを保持するためのSessionStateキー</summary>
         private const string SessionIdKey = "UnityMcp.SessionId";
 
-        private static readonly JsonSerializerSettings JsonSettings = new()
-        {
-            NullValueHandling = NullValueHandling.Ignore
-        };
+        /// <summary>
+        /// メインスレッドでの実行待ちリクエスト。
+        /// ドメインリロードで破棄する際、無応答にせずビジーエラーを返すために保持する。
+        /// </summary>
+        private static readonly ConcurrentDictionary<HttpListenerContext, JsonRpcRequest> pendingRequests = new();
 
         static McpServer()
         {
@@ -113,6 +114,8 @@ namespace UnityMcp
 
         private static void StopListener()
         {
+            // 破棄する前に、待機中のリクエストへ「再送可能なビジーエラー」を返して無応答を防ぐ
+            FailPendingRequests();
             McpDispatcher.Clear();
 
             try
@@ -131,6 +134,28 @@ namespace UnityMcp
 
             thread?.Join(TimeSpan.FromSeconds(3));
             thread = null;
+        }
+
+        /// <summary>
+        /// 実行待ち・実行中のまま打ち切られるリクエストへ、構造化されたビジーエラーを返す。
+        /// ドメインリロードで応答が消え、クライアント側が "Unexpected content type: null" になるのを防ぐ。
+        /// </summary>
+        private static void FailPendingRequests()
+        {
+            foreach (var pair in pendingRequests)
+            {
+                if (!TryClaimResponse(pair.Key))
+                {
+                    continue;
+                }
+
+                JsonRpcHttpWriter.WriteError(
+                    pair.Key,
+                    pair.Value?.Id,
+                    JsonRpcErrorCodes.ServerBusy,
+                    "server busy: domain reloading. The request was interrupted and is safe to resend as-is.",
+                    new { retryable = true, reason = "domain reloading" });
+            }
         }
 
         private static int ResolvePort()
@@ -211,26 +236,9 @@ namespace UnityMcp
 
         private static void HandlePost(HttpListenerContext ctx)
         {
-            string body;
-            using (var reader = new StreamReader(ctx.Request.InputStream))
-            {
-                body = reader.ReadToEnd();
-            }
-
-            JsonRpcRequest request;
-            try
-            {
-                request = JsonConvert.DeserializeObject<JsonRpcRequest>(body);
-            }
-            catch (JsonException e)
-            {
-                WriteParseErrorResponse(ctx, e.Message);
-                return;
-            }
-
+            var request = ReadRequest(ctx);
             if (request == null)
             {
-                WriteParseErrorResponse(ctx, "Empty or invalid JSON-RPC request");
                 return;
             }
 
@@ -240,7 +248,37 @@ namespace UnityMcp
                 return;
             }
 
+            pendingRequests[ctx] = request;
             McpDispatcher.Enqueue(() => ExecuteAndRespond(ctx, request));
+        }
+
+        /// <summary>
+        /// リクエストボディをJSON-RPCへ変換する。失敗時はパースエラーを返してnullを返す。
+        /// </summary>
+        private static JsonRpcRequest ReadRequest(HttpListenerContext ctx)
+        {
+            string body;
+            using (var reader = new StreamReader(ctx.Request.InputStream))
+            {
+                body = reader.ReadToEnd();
+            }
+
+            try
+            {
+                var request = JsonConvert.DeserializeObject<JsonRpcRequest>(body);
+                if (request != null)
+                {
+                    return request;
+                }
+            }
+            catch (JsonException e)
+            {
+                WriteParseError(ctx, e.Message);
+                return null;
+            }
+
+            WriteParseError(ctx, "Empty or invalid JSON-RPC request");
+            return null;
         }
 
         /// <summary>
@@ -252,19 +290,31 @@ namespace UnityMcp
             try
             {
                 var response = await methodRouter.RouteAsync(request);
-                SendRouteResult(ctx, request, response);
+                if (TryClaimResponse(ctx))
+                {
+                    SendRouteResult(ctx, response);
+                }
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"[MCP] Error executing request: {e.Message}");
-                WriteInternalErrorResponse(ctx, request.Id, e.Message);
+                if (TryClaimResponse(ctx))
+                {
+                    JsonRpcHttpWriter.WriteError(ctx, request.Id, JsonRpcErrorCodes.InternalError, e.Message);
+                }
             }
         }
 
-        private static void SendRouteResult(
-            HttpListenerContext ctx,
-            JsonRpcRequest request,
-            JsonRpcResponse response)
+        /// <summary>
+        /// このコンテキストへの応答権を取得する。
+        /// ドメインリロードによる打ち切りとの二重応答を防ぐため、除去に成功した側だけが書き込む。
+        /// </summary>
+        private static bool TryClaimResponse(HttpListenerContext ctx)
+        {
+            return pendingRequests.TryRemove(ctx, out _);
+        }
+
+        private static void SendRouteResult(HttpListenerContext ctx, JsonRpcResponse response)
         {
             if (response == null)
             {
@@ -276,11 +326,11 @@ namespace UnityMcp
 
             if (AcceptsSse(ctx.Request))
             {
-                WriteSseResponse(ctx, response);
+                JsonRpcHttpWriter.WriteSse(ctx, response);
             }
             else
             {
-                WriteJsonResponse(ctx, response);
+                JsonRpcHttpWriter.WriteJson(ctx, response);
             }
         }
 
@@ -363,8 +413,14 @@ namespace UnityMcp
                 return true;
             }
 
-            ctx.Response.StatusCode = 400;
-            ctx.Response.Close();
+            // ボディ無しの400を返すとクライアントが content-type: null で失敗するため、必ずJSONで返す
+            JsonRpcHttpWriter.WriteError(
+                ctx,
+                null,
+                JsonRpcErrorCodes.InvalidSession,
+                "Invalid or missing Mcp-Session-Id header. Send 'initialize' to start a new session.",
+                new { retryable = false },
+                400);
             return false;
         }
 
@@ -384,70 +440,29 @@ namespace UnityMcp
             return accept.Contains("text/event-stream");
         }
 
-        private static void WriteJsonResponse(HttpListenerContext ctx, JsonRpcResponse response)
+        private static void WriteParseError(HttpListenerContext ctx, string message)
         {
-            try
-            {
-                var json = JsonConvert.SerializeObject(response, JsonSettings);
-                var buffer = Encoding.UTF8.GetBytes(json);
-                ctx.Response.ContentType = "application/json";
-                ctx.Response.OutputStream.Write(buffer, 0, buffer.Length);
-                ctx.Response.OutputStream.Close();
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[MCP] Failed to write JSON response: {e.Message}");
-            }
-        }
-
-        private static void WriteSseResponse(HttpListenerContext ctx, JsonRpcResponse response)
-        {
-            try
-            {
-                var writer = new SseWriter(ctx.Response);
-                var json = JsonConvert.SerializeObject(response, JsonSettings);
-                writer.WriteEvent(json);
-                writer.Close();
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[MCP] Failed to write SSE response: {e.Message}");
-            }
-        }
-
-        private static void WriteParseErrorResponse(HttpListenerContext ctx, string message)
-        {
-            var error = new JsonRpcError
-            {
-                Code = JsonRpcErrorCodes.ParseError,
-                Message = message
-            };
-            var response = JsonRpcResponse.Failure(null, error);
-            WriteJsonResponse(ctx, response);
-        }
-
-        private static void WriteInternalErrorResponse(HttpListenerContext ctx, object requestId, string message)
-        {
-            var error = new JsonRpcError
-            {
-                Code = JsonRpcErrorCodes.InternalError,
-                Message = message
-            };
-            var response = JsonRpcResponse.Failure(requestId, error);
-            WriteJsonResponse(ctx, response);
+            JsonRpcHttpWriter.WriteError(ctx, null, JsonRpcErrorCodes.ParseError, message);
         }
 
         private static void RespondAccepted(HttpListenerContext ctx)
         {
             AddSessionHeader(ctx);
+            // 202はボディを持たないため Content-Type は設定しない（空ボディをJSONと宣言しないため）
             ctx.Response.StatusCode = 202;
+            ctx.Response.ContentLength64 = 0;
             ctx.Response.Close();
         }
 
         private static void RespondMethodNotAllowed(HttpListenerContext ctx)
         {
-            ctx.Response.StatusCode = 405;
-            ctx.Response.Close();
+            JsonRpcHttpWriter.WriteError(
+                ctx,
+                null,
+                JsonRpcErrorCodes.InvalidRequest,
+                $"HTTP method not allowed: {ctx.Request.HttpMethod}",
+                null,
+                405);
         }
     }
 }

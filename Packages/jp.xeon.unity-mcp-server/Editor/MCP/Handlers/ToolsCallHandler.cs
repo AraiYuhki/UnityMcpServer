@@ -15,27 +15,57 @@ namespace UnityMcp.Handlers
             var arguments = request.Params?["arguments"];
             var argumentsJson = arguments?.ToString(Formatting.None) ?? "{}";
 
-            CallToolResult callToolResult;
+            if (ShouldRejectAsBusy(toolName))
+            {
+                return CreateBusyError(request, toolName);
+            }
 
+            var callToolResult = await ExecuteTool(toolName, argumentsJson);
+            return JsonRpcResponse.Success(request.Id, callToolResult);
+        }
+
+        private static async Task<CallToolResult> ExecuteTool(string toolName, string argumentsJson)
+        {
             try
             {
                 var result = await McpToolRouter.Execute(toolName, argumentsJson);
                 if (result is CallToolResult directResult)
                 {
-                    callToolResult = directResult;
+                    return directResult;
                 }
-                else
-                {
-                    var serialized = JsonConvert.SerializeObject(result);
-                    callToolResult = CallToolResult.SuccessText(serialized);
-                }
+
+                return CallToolResult.SuccessText(JsonConvert.SerializeObject(result));
             }
             catch (Exception ex)
             {
-                callToolResult = CallToolResult.ErrorText(ex.Message);
+                return CallToolResult.ErrorText(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// コンパイル中・アセット更新中は、状態観測系を除くツールをビジーエラーで断る。
+        /// 中途半端な状態で実行して誤った結果を返すより、再送可能なエラーを返すほうが安全。
+        /// </summary>
+        private static bool ShouldRejectAsBusy(string toolName)
+        {
+            if (EditorReadiness.IsReady)
+            {
+                return false;
             }
 
-            return JsonRpcResponse.Success(request.Id, callToolResult);
+            return !EditorReadiness.IsAllowedWhileBusy(toolName);
+        }
+
+        private static JsonRpcResponse CreateBusyError(JsonRpcRequest request, string toolName)
+        {
+            var error = new JsonRpcError
+            {
+                Code = JsonRpcErrorCodes.ServerBusy,
+                Message = $"server busy: {EditorReadiness.BusyReason}. '{toolName}' was not executed.",
+                Data = EditorReadiness.BuildBusyDetail()
+            };
+
+            return JsonRpcResponse.Failure(request.Id, error);
         }
     }
 }

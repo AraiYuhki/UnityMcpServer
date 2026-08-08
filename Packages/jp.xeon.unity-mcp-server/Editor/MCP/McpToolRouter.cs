@@ -35,10 +35,6 @@ namespace UnityMcp
         public static void Initialize()
         {
             toolList.Clear();
-            var checkStatusTool = new CommonMcpTool(
-                "check_status",
-                CheckStatus,
-                "Check if the Unity Editor is running and the MCP server is responsive. Call this before performing any Unity-related operations to verify connectivity.");
             var editModeTestTool = new RunTests(
                 "run_editmode_tests",
                 "Start all EditMode unit tests in the Unity project using Test Runner. Call this after modifying C# scripts to verify that changes don't break existing functionality. Returns immediately once the run has started; poll 'get_editmode_test_results' for the pass/fail summary.",
@@ -57,7 +53,7 @@ namespace UnityMcp
                 "Poll the result of the PlayMode test run started by 'run_playmode_tests'. Returns status 'running', 'not_started', or 'completed' with a pass/fail summary and failure details.",
                 TestMode.PlayMode,
                 "run_playmode_tests");
-            TryRegisterTool(checkStatusTool);
+            TryRegisterTool(new CheckStatus());
             TryRegisterTool(editModeTestTool);
             TryRegisterTool(playModeTestTool);
             TryRegisterTool(getEditModeTestResultsTool);
@@ -148,14 +144,6 @@ namespace UnityMcp
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
             }
             return await tool.Execute(arguments);
-        }
-
-        /// <summary>
-        /// サーバーの稼働状態を確認するツール
-        /// </summary>
-        private static Task<object> CheckStatus(string _)
-        {
-            return Task.FromResult<object>(true);
         }
     }
 }
