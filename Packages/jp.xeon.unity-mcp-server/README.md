@@ -13,7 +13,9 @@ Unity Editor上で動作するMCP（Model Context Protocol）サーバーです�
 
 ## 動作環境
 
-- Unity 6000.0 以上
+- Unity 6000.0 以上（動作確認: 6000.5.5f1）
+- com.unity.nuget.newtonsoft-json 3.2.1 以上
+- 任意: com.unity.inputsystem（`simulate_keyboard` / `simulate_mouse`）、com.unity.ugui（`simulate_ui_click` / `simulate_ui_drag`）
 
 ## インストール
 

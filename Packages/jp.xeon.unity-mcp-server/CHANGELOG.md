@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- 動作確認済みのUnityバージョンを 6000.5.5f1 に更新（対応バージョンは引き続き 6000.0 以上）
 - `get_compile_errors` の戻り値に `state`（idle/pending/compiling/completed）、`isStale`、
   `finishedAt`、`durationMs`、`compilationFailed` を追加
   - `CompilationCache` に状態機械を実装し、状態と結果を `SessionState` へ退避してドメインリロードを跨いで保持する
