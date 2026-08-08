@@ -71,6 +71,8 @@ namespace UnityMcp
             TryRegisterTool(new GetComponentInfo());
             TryRegisterTool(new SetComponentProperty());
             TryRegisterTool(new OpenScene());
+            TryRegisterTool(new SaveScene());
+            TryRegisterTool(new SaveSceneAs());
             TryRegisterTool(new TakeScreenshot());
             TryRegisterTool(new AddComponent());
             TryRegisterTool(new RemoveComponent());

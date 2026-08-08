@@ -1,5 +1,8 @@
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using UnityEditor.TestTools.TestRunner.Api;
+using UnityMcp.Tools.Compile;
+using UnityMcp.Tools.Scene;
 
 namespace UnityMcp
 {
@@ -13,7 +16,13 @@ namespace UnityMcp
     {
         public string Name { get; }
         public string Description { get; }
-        public string InputSchema { get; } = "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
+
+        public string InputSchema { get; } =
+            "{\"type\":\"object\",\"properties\":{" +
+            "\"autoSave\":{\"type\":\"boolean\",\"description\":\"Save modified scenes before running instead of refusing (default: false)\",\"default\":false}," +
+            "\"discard\":{\"type\":\"boolean\",\"description\":\"Discard unsaved scene changes before running instead of refusing (default: false)\",\"default\":false}," +
+            "\"force\":{\"type\":\"boolean\",\"description\":\"Bypass the compile gate and run even when compilation is unsettled or failing (default: false)\",\"default\":false}" +
+            "},\"required\":[]}";
 
         private readonly TestMode testMode;
 
@@ -32,9 +41,10 @@ namespace UnityMcp
 
         /// <summary>
         /// 指定されたモードでテストを開始する。完了は待たない。
+        /// 古いアセンブリでの実行と未保存シーンのモーダル停止を事前に封じる。
         /// </summary>
         /// <returns>開始できたかどうかを示すステータス</returns>
-        public Task<object> Execute(string _)
+        public Task<object> Execute(string args)
         {
             if (TestRunSessionState.IsRunning(testMode))
             {
@@ -45,6 +55,21 @@ namespace UnityMcp
                 });
             }
 
+            var parameters = ParseArgs(args);
+            CompileGate.Ensure(Name, parameters.Force);
+            SceneDirtyGuard.Resolve(Name, parameters.AutoSave, parameters.Discard);
+
+            StartRun();
+
+            return Task.FromResult<object>(new TestRunStatus
+            {
+                Status = "started",
+                Message = $"{testMode} tests started. Poll the corresponding get_*_test_results tool for the outcome."
+            });
+        }
+
+        private void StartRun()
+        {
             TestRunSessionState.MarkRunning(testMode);
             TestRunCallbackRegistrar.Api.Execute(new ExecutionSettings
             {
@@ -53,12 +78,28 @@ namespace UnityMcp
                     new Filter { testMode = testMode }
                 }
             });
-
-            return Task.FromResult<object>(new TestRunStatus
-            {
-                Status = "started",
-                Message = $"{testMode} tests started. Poll the corresponding get_*_test_results tool for the outcome."
-            });
         }
+
+        private static RunTestsArgs ParseArgs(string args)
+        {
+            if (string.IsNullOrEmpty(args))
+            {
+                return new RunTestsArgs();
+            }
+
+            return JsonConvert.DeserializeObject<RunTestsArgs>(args) ?? new RunTestsArgs();
+        }
+    }
+
+    internal class RunTestsArgs
+    {
+        [JsonProperty("autoSave")]
+        public bool AutoSave { get; set; }
+
+        [JsonProperty("discard")]
+        public bool Discard { get; set; }
+
+        [JsonProperty("force")]
+        public bool Force { get; set; }
     }
 }

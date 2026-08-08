@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using UnityMcp.Tools.Console;
 
 namespace UnityMcp.Tools.Editor
 {
@@ -22,5 +23,13 @@ namespace UnityMcp.Tools.Editor
         /// <summary>操作結果のメッセージ</summary>
         [JsonProperty("message")]
         public string Message { get; set; }
+
+        /// <summary>未保存の変更に対して行った処理（保存／破棄）。何も無ければnull。</summary>
+        [JsonProperty("dirtySceneResolution")]
+        public string DirtySceneResolution { get; set; }
+
+        /// <summary>前回のチェックポイント以降に新規発生したコンソールエラーの要約</summary>
+        [JsonProperty("newConsoleErrors")]
+        public ConsoleErrorDigest NewConsoleErrors { get; set; }
     }
 }
