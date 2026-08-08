@@ -68,12 +68,16 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 | `run_playmode_tests` | PlayModeテストの実行を開始（結果は`get_playmode_test_results`でポーリング） |
 | `get_editmode_test_results` | `run_editmode_tests`の結果を取得（実行中/未実行/完了） |
 | `get_playmode_test_results` | `run_playmode_tests`の結果を取得（実行中/未実行/完了） |
-| `get_compile_errors` | 直近のコンパイルエラー・警告を取得 |
+| `get_compile_errors` | 直近のコンパイルエラー・警告を取得（`state` / `isStale` 付き） |
+| `compile_and_wait` | リフレッシュ後、コンパイル完了まで待って確定した結果を返す |
+| `save_scene` | 開いているシーンを保存（ダイアログを出さない） |
+| `save_scene_as` | アクティブなシーンを指定パスへ保存 |
+| `step_frames` | PlayModeのフレームを指定数だけ確実に進める |
 | `get_scene_hierarchy` | 現在のシーンのGameObject階層を取得 |
 | `get_component_info` | 指定GameObjectのコンポーネント詳細を取得 |
 | `find_missing_references` | シーン・Prefab内のMissing Referenceを検索 |
 | `get_asset_list` | 指定パス以下のアセット一覧を取得 |
-| `get_console_logs` | Consoleのログ一覧を取得 |
+| `get_console_logs` | Consoleのログ一覧を取得（`sinceToken`で差分取得可） |
 
 ### プロトコル
 

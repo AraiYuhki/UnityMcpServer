@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-08
+
+### Added
+
+- `compile_and_wait` ツールを追加
+  - `AssetDatabase.Refresh()` 後、コンパイル完了まで待機して**確定した**エラー・警告のみを返す
+  - `import_asset` + `get_compile_errors` の「コンパイル前の前回結果を緑と誤認する」問題を根絶する
+  - タイムアウト（既定120秒）付き。ドメインリロードで応答が失われた場合も冪等に再送できる
+- `save_scene` / `save_scene_as` ツールを追加
+  - `EditorSceneManager.SaveScene` / `SaveOpenScenes` による明示保存。プロンプトを伴うAPIは使わない
+- `step_frames` ツールを追加
+  - `EditorApplication.QueuePlayerLoopUpdate()` を駆動し、エディタ非フォーカスでもフレームを確実に進める
+  - スクリーンショットや状態観測の直前に呼ぶことで静止画問題を回避できる
+- `simulate_ui_drag` ツールを追加（press → move → release のドラッグを1呼び出しで再現）
+- `simulate_ui_click` に `action`（click / hold / press / release）と `holdMs` を追加
+- `simulate_keyboard` に `hold` アクションと `durationMs` を追加（押しっぱなし入力）
+- `get_console_logs` に `sinceToken` / `onlyErrors` / `onlyExceptions` を追加し、
+  戻り値に `nextToken` / `truncated` を追加（前回以降の新規エラーだけを取得できる）
+
+### Changed
+
+- `get_compile_errors` の戻り値に `state`（idle/pending/compiling/completed）、`isStale`、
+  `finishedAt`、`durationMs`、`compilationFailed` を追加
+  - `CompilationCache` に状態機械を実装し、状態と結果を `SessionState` へ退避してドメインリロードを跨いで保持する
+  - スクリプト・asmdefの変更を `AssetPostprocessor` で検知して `pending` へ落とす
+- `enter_play_mode` / `open_scene` / `run_editmode_tests` / `run_playmode_tests` に
+  未保存シーンのガードを追加（`autoSave` / `discard` で挙動を選択、既定は拒否）
+  - モーダルダイアログでエディタが応答不能になる事象を防ぐ
+- `run_editmode_tests` / `run_playmode_tests` / `enter_play_mode` にコンパイルゲートを追加
+  - コンパイルが未確定またはエラー保持中なら実行を拒否する（`force` で回避可能）
+- `enter_play_mode` / `exit_play_mode` / `open_scene` / `compile_and_wait` / `step_frames` の戻り値に
+  新規コンソールエラーの要約 `newConsoleErrors` を同梱（`failOnNewError` で失敗扱いにもできる）
+- `check_status` が readiness を返すよう変更
+  （`isReady` / `isCompiling` / `isUpdating` / `compileState` / `isPlaying` / `busyReason`）
+- ビジー時・セッション不正時・メソッド不許可時のHTTP応答を必ず JSON-RPC エラーとして返すよう変更
+  - すべての経路で `Content-Type: application/json` を設定し、`Unexpected content type: null` を防ぐ
+  - コンパイル中・ドメインリロード中は `-32001 server busy`（再送可能）を返す
+  - ドメインリロードで打ち切られる実行待ち・実行中のリクエストにもビジーエラーを返し、無応答をなくす
+    （応答権を `TryRemove` で排他的に取得し、二重応答を防ぐ）
+
 ## [1.4.0] - 2026-07-09
 
 ### Added
