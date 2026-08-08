@@ -1,9 +1,7 @@
 #if MCP_INPUT_SYSTEM
-using System;
 using System.Threading.Tasks;
-using UnityEditor;
-using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityMcp.Tools.Editor;
 
 namespace UnityMcp.Tools.InputSimulation
 {
@@ -12,41 +10,21 @@ namespace UnityMcp.Tools.InputSimulation
     /// </summary>
     internal static class InputSimulationUtility
     {
-        private const int FrameWaitTimeoutMs = 2000;
-
         /// <summary>
         /// プレイヤーループが次のフレームへ進むまで待機する。
         /// エディタがバックグラウンドでもフレームが進むよう明示的に要求し続ける。
         /// </summary>
-        public static async Task WaitForNextPlayerLoopFrameAsync()
+        public static Task WaitForNextPlayerLoopFrameAsync()
         {
-            var tcs = new TaskCompletionSource<bool>();
-            var startFrame = Time.frameCount;
+            return PlayerLoopDriver.WaitForNextFrameAsync();
+        }
 
-            void OnUpdate()
-            {
-                if (Time.frameCount > startFrame)
-                {
-                    EditorApplication.update -= OnUpdate;
-                    tcs.TrySetResult(true);
-                }
-                else
-                {
-                    EditorApplication.QueuePlayerLoopUpdate();
-                }
-            }
-
-            EditorApplication.update += OnUpdate;
-            EditorApplication.QueuePlayerLoopUpdate();
-
-            var timeoutTask = Task.Delay(FrameWaitTimeoutMs);
-            var completed = await Task.WhenAny(tcs.Task, timeoutTask);
-            if (completed != tcs.Task)
-            {
-                EditorApplication.update -= OnUpdate;
-                throw new TimeoutException(
-                    "Timed out waiting for the player loop to advance. Is Play Mode running and the editor not throttled?");
-            }
+        /// <summary>
+        /// 指定ミリ秒のあいだフレームを進め続け、入力を押しっぱなしにする。
+        /// </summary>
+        public static Task HoldAsync(int durationMs)
+        {
+            return PlayerLoopDriver.HoldAsync(durationMs);
         }
 
         /// <summary>

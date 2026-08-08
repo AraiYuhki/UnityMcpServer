@@ -1,35 +1,43 @@
 #if MCP_UGUI
-using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
+using UnityMcp.Tools.Editor;
 
 namespace UnityMcp.Tools.InputSimulation
 {
     /// <summary>
     /// uGUIの要素に対してポインタイベントを直接発火させるツール。
     /// PlayMode中のみ動作し、入力バックエンドに依存せずButton等のクリックを再現する。
+    /// holdMs を指定すると押しっぱなしを再現でき、press / release に分けた操作も行える。
     /// </summary>
     public class SimulateUiClick : IMcpTool
     {
+        private const int MaxHoldMs = 30000;
+
         public string Name => "simulate_ui_click";
 
         public string Description =>
-            "Click a uGUI element by firing pointer events directly via ExecuteEvents (PlayMode only). " +
-            "Invokes pointer enter/down/up/click handlers (e.g. Button.onClick) on the target GameObject, " +
-            "independent of the active input backend. " +
+            "Click, press, release or press-and-hold a uGUI element by firing pointer events directly via " +
+            "ExecuteEvents (PlayMode only). Invokes pointer enter/down/up/click handlers (e.g. Button.onClick) " +
+            "on the target GameObject, independent of the active input backend. " +
+            "Use action 'click' for a normal click, 'hold' to keep the button pressed for holdMs while the " +
+            "player loop keeps running (e.g. a 'move forward' button), or 'press'/'release' to control the " +
+            "press state across several calls. " +
             "Specify the GameObject by its hierarchy path from a scene root (e.g. 'Canvas/Panel/Button').";
 
         public string InputSchema =>
             "{\"type\":\"object\",\"properties\":{" +
             "\"gameObjectPath\":{\"type\":\"string\",\"description\":\"Hierarchy path from scene root (e.g. 'Canvas/Panel/Button')\"}," +
+            "\"action\":{\"type\":\"string\",\"enum\":[\"click\",\"hold\",\"press\",\"release\"],\"description\":\"Pointer action to perform. Default: click.\"}," +
+            "\"holdMs\":{\"type\":\"integer\",\"description\":\"How long to keep the pointer pressed for action 'hold' (default: 500, max: 30000)\",\"default\":500}," +
             "\"button\":{\"type\":\"string\",\"enum\":[\"left\",\"right\",\"middle\"],\"description\":\"Pointer button to report. Default: left.\"}" +
             "},\"required\":[\"gameObjectPath\"]}";
 
-        public Task<object> Execute(string args)
+        public async Task<object> Execute(string args)
         {
             if (!EditorApplication.isPlaying)
             {
@@ -37,103 +45,121 @@ namespace UnityMcp.Tools.InputSimulation
             }
 
             var parameters = ParseArgs(args);
-            if (string.IsNullOrEmpty(parameters.GameObjectPath))
-            {
-                throw new InvalidOperationException("gameObjectPath is required.");
-            }
-
-            var target = FindGameObject(parameters.GameObjectPath);
-            if (target == null)
-            {
-                throw new InvalidOperationException($"GameObject not found: '{parameters.GameObjectPath}'");
-            }
-
-            var result = Click(target, parameters);
-            return Task.FromResult<object>(result);
-        }
-
-        private static SimulateUiClickResult Click(GameObject target, SimulateUiClickArgs parameters)
-        {
+            var target = UiSimulationUtility.RequireGameObject(parameters.GameObjectPath);
             var eventData = BuildPointerData(target, parameters.Button);
 
+            return await Dispatch(parameters, target, eventData);
+        }
+
+        private static Task<SimulateUiClickResult> Dispatch(
+            SimulateUiClickArgs parameters,
+            GameObject target,
+            PointerEventData eventData)
+        {
+            switch (parameters.Action)
+            {
+                case "click":
+                    return Task.FromResult(Click(parameters, target, eventData));
+                case "hold":
+                    return Hold(parameters, target, eventData);
+                case "press":
+                    return Task.FromResult(Press(parameters, target, eventData));
+                case "release":
+                    return Task.FromResult(Release(parameters, target, eventData));
+                default:
+                    throw new InvalidOperationException(
+                        $"Unknown action: '{parameters.Action}'. Use 'click', 'hold', 'press', or 'release'.");
+            }
+        }
+
+        private static SimulateUiClickResult Click(
+            SimulateUiClickArgs parameters,
+            GameObject target,
+            PointerEventData eventData)
+        {
             ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerEnterHandler);
             ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerDownHandler);
             ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerUpHandler);
             ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerClickHandler);
             ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerExitHandler);
 
-            return new SimulateUiClickResult
-            {
-                Ok = true,
-                GameObjectPath = parameters.GameObjectPath,
-                Button = parameters.Button,
-                Message = $"Fired pointer click on '{parameters.GameObjectPath}'."
-            };
+            return BuildResult(parameters, "click", $"Fired pointer click on '{parameters.GameObjectPath}'.");
+        }
+
+        /// <summary>
+        /// 指定時間ポインタを押し続けてから離す。押しっぱなしを要求するUIの検証に使う。
+        /// </summary>
+        private static async Task<SimulateUiClickResult> Hold(
+            SimulateUiClickArgs parameters,
+            GameObject target,
+            PointerEventData eventData)
+        {
+            var holdMs = ResolveHoldMs(parameters.HoldMs);
+
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerEnterHandler);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerDownHandler);
+            await PlayerLoopDriver.HoldAsync(holdMs);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerUpHandler);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerClickHandler);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerExitHandler);
+
+            return BuildResult(parameters, "hold",
+                $"Held pointer on '{parameters.GameObjectPath}' for {holdMs}ms.");
+        }
+
+        private static SimulateUiClickResult Press(
+            SimulateUiClickArgs parameters,
+            GameObject target,
+            PointerEventData eventData)
+        {
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerEnterHandler);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerDownHandler);
+
+            return BuildResult(parameters, "press",
+                $"Pressed pointer on '{parameters.GameObjectPath}'. Call action 'release' to let go.");
+        }
+
+        private static SimulateUiClickResult Release(
+            SimulateUiClickArgs parameters,
+            GameObject target,
+            PointerEventData eventData)
+        {
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerUpHandler);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerClickHandler);
+            ExecuteEvents.Execute(target, eventData, ExecuteEvents.pointerExitHandler);
+
+            return BuildResult(parameters, "release", $"Released pointer on '{parameters.GameObjectPath}'.");
         }
 
         private static PointerEventData BuildPointerData(GameObject target, string button)
         {
-            var rectTransform = target.transform as RectTransform;
-            var position = rectTransform != null
-                ? (Vector2)rectTransform.position
-                : Vector2.zero;
+            var position = UiSimulationUtility.ResolveScreenPosition(target);
+            return UiSimulationUtility.BuildPointerData(target, button, position);
+        }
 
-            return new PointerEventData(EventSystem.current)
+        private static int ResolveHoldMs(int requested)
+        {
+            if (requested <= 0)
             {
-                button = ParseButton(button),
-                position = position,
-                pointerPress = target,
-                pointerCurrentRaycast = new RaycastResult { gameObject = target }
+                return 0;
+            }
+
+            return requested > MaxHoldMs ? MaxHoldMs : requested;
+        }
+
+        private static SimulateUiClickResult BuildResult(
+            SimulateUiClickArgs parameters,
+            string action,
+            string message)
+        {
+            return new SimulateUiClickResult
+            {
+                Ok = true,
+                Action = action,
+                GameObjectPath = parameters.GameObjectPath,
+                Button = parameters.Button,
+                Message = message
             };
-        }
-
-        private static PointerEventData.InputButton ParseButton(string button)
-        {
-            switch (button)
-            {
-                case "left":
-                    return PointerEventData.InputButton.Left;
-                case "right":
-                    return PointerEventData.InputButton.Right;
-                case "middle":
-                    return PointerEventData.InputButton.Middle;
-                default:
-                    throw new InvalidOperationException($"Invalid button: '{button}'. Use 'left', 'right', or 'middle'.");
-            }
-        }
-
-        private static GameObject FindGameObject(string path)
-        {
-            var parts = path.Split('/');
-            var scene = SceneManager.GetActiveScene();
-
-            var root = FindRoot(scene, parts[0]);
-            if (root == null)
-            {
-                return null;
-            }
-
-            if (parts.Length == 1)
-            {
-                return root;
-            }
-
-            var remaining = string.Join("/", parts, 1, parts.Length - 1);
-            var child = root.transform.Find(remaining);
-            return child != null ? child.gameObject : null;
-        }
-
-        private static GameObject FindRoot(UnityEngine.SceneManagement.Scene scene, string name)
-        {
-            foreach (var go in scene.GetRootGameObjects())
-            {
-                if (go.name == name)
-                {
-                    return go;
-                }
-            }
-
-            return null;
         }
 
         private static SimulateUiClickArgs ParseArgs(string args)
@@ -152,6 +178,12 @@ namespace UnityMcp.Tools.InputSimulation
         [JsonProperty("gameObjectPath")]
         public string GameObjectPath { get; set; } = string.Empty;
 
+        [JsonProperty("action")]
+        public string Action { get; set; } = "click";
+
+        [JsonProperty("holdMs")]
+        public int HoldMs { get; set; } = 500;
+
         [JsonProperty("button")]
         public string Button { get; set; } = "left";
     }
@@ -160,6 +192,9 @@ namespace UnityMcp.Tools.InputSimulation
     {
         [JsonProperty("ok")]
         public bool Ok { get; set; }
+
+        [JsonProperty("action")]
+        public string Action { get; set; }
 
         [JsonProperty("gameObjectPath")]
         public string GameObjectPath { get; set; }

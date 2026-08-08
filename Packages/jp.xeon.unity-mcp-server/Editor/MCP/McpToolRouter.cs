@@ -89,6 +89,7 @@ namespace UnityMcp
             TryRegisterTool(new EnterPlayMode());
             TryRegisterTool(new ExitPlayMode());
             TryRegisterTool(new GetPlayModeState());
+            TryRegisterTool(new StepFrames());
             TryRegisterTool(new UndoOperation());
             TryRegisterTool(new RedoOperation());
             TryRegisterTool(new GetMaterialProperties());
@@ -107,6 +108,7 @@ namespace UnityMcp
 #endif
 #if MCP_UGUI
             TryRegisterTool(new SimulateUiClick());
+            TryRegisterTool(new SimulateUiDrag());
 #endif
         }
 

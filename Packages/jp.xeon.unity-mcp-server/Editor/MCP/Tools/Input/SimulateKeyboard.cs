@@ -14,19 +14,24 @@ namespace UnityMcp.Tools.InputSimulation
     /// </summary>
     public class SimulateKeyboard : IMcpTool
     {
+        private const int DefaultHoldMs = 500;
+        private const int MaxHoldMs = 30000;
+
         public string Name => "simulate_keyboard";
 
         public string Description =>
             "Simulate keyboard input via the Input System (PlayMode only). " +
             "Inject a snapshot of currently held keys to drive InputAction-based game logic. " +
             "Use action 'press' to hold the given keys, 'release' to release all keys, " +
-            "or 'tap' to press and release them in one call. " +
+            "'tap' to press and release them in one call, or 'hold' to keep them pressed for durationMs " +
+            "while the player loop keeps running (for continuous movement input). " +
             "Key names follow the Input System Key enum (e.g. 'W', 'Space', 'Enter', 'LeftArrow').";
 
         public string InputSchema =>
             "{\"type\":\"object\",\"properties\":{" +
             "\"keys\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Key names to set as pressed (Input System Key enum). Required for 'press' and 'tap'.\"}," +
-            "\"action\":{\"type\":\"string\",\"enum\":[\"press\",\"release\",\"tap\"],\"description\":\"press: hold keys, release: release all keys, tap: press then release. Default: tap.\"}" +
+            "\"action\":{\"type\":\"string\",\"enum\":[\"press\",\"release\",\"tap\",\"hold\"],\"description\":\"press: hold keys and return immediately, release: release all keys, tap: press then release, hold: keep pressed for durationMs then release. Default: tap.\"}," +
+            "\"durationMs\":{\"type\":\"integer\",\"description\":\"How long to keep the keys pressed for action 'hold' (default: 500, max: 30000)\",\"default\":500}" +
             "},\"required\":[\"keys\"]}";
 
         public async Task<object> Execute(string args)
@@ -40,12 +45,15 @@ namespace UnityMcp.Tools.InputSimulation
             var keyboard = Keyboard.current ?? InputSystem.AddDevice<Keyboard>();
             var keys = ParseKeys(parameters.Keys);
 
-            return await Dispatch(parameters.Action, keyboard, keys);
+            return await Dispatch(parameters, keyboard, keys);
         }
 
-        private static Task<SimulateKeyboardResult> Dispatch(string action, Keyboard keyboard, Key[] keys)
+        private static Task<SimulateKeyboardResult> Dispatch(
+            SimulateKeyboardArgs parameters,
+            Keyboard keyboard,
+            Key[] keys)
         {
-            switch (action)
+            switch (parameters.Action)
             {
                 case "press":
                     return Task.FromResult(Press(keyboard, keys));
@@ -53,9 +61,34 @@ namespace UnityMcp.Tools.InputSimulation
                     return Task.FromResult(Release(keyboard));
                 case "tap":
                     return Tap(keyboard, keys);
+                case "hold":
+                    return Hold(keyboard, keys, ResolveDuration(parameters.DurationMs));
                 default:
-                    throw new InvalidOperationException($"Unknown action: '{action}'. Use 'press', 'release', or 'tap'.");
+                    throw new InvalidOperationException(
+                        $"Unknown action: '{parameters.Action}'. Use 'press', 'release', 'tap', or 'hold'.");
             }
+        }
+
+        /// <summary>
+        /// 指定時間キーを押し続けてから離す。移動などの継続入力を再現する。
+        /// </summary>
+        private static async Task<SimulateKeyboardResult> Hold(Keyboard keyboard, Key[] keys, int durationMs)
+        {
+            RequireKeys(keys, "hold");
+            QueueState(keyboard, keys);
+            await InputSimulationUtility.HoldAsync(durationMs);
+            QueueState(keyboard, Array.Empty<Key>());
+            return BuildResult("hold", keys, $"Held {keys.Length} key(s) for {durationMs}ms.");
+        }
+
+        private static int ResolveDuration(int requested)
+        {
+            if (requested <= 0)
+            {
+                return DefaultHoldMs;
+            }
+
+            return requested > MaxHoldMs ? MaxHoldMs : requested;
         }
 
         private static SimulateKeyboardResult Press(Keyboard keyboard, Key[] keys)
@@ -164,6 +197,9 @@ namespace UnityMcp.Tools.InputSimulation
 
         [JsonProperty("action")]
         public string Action { get; set; } = "tap";
+
+        [JsonProperty("durationMs")]
+        public int DurationMs { get; set; } = 500;
     }
 
     internal class SimulateKeyboardResult
