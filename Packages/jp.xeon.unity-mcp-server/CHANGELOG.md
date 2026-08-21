@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-08-21
+
+### Added
+
+- `run_editmode_tests` / `run_playmode_tests` にテストの絞り込みオプションを追加
+  - `testNames` / `groupNames`（正規表現） / `categoryNames` / `assemblyNames` で対象を明示指定できる
+  - `onlyFailures: true` で、そのテストモードの直近の完了実行で失敗・スキップされたテストのみ再実行できる
+    - `TestResultSummary` に `skippedTests`（スキップされたテストの完全修飾名一覧）を追加し、再実行対象の特定に使用
+  - `changedFilesOnly: true`（+ 任意の `gitRef`、既定 `HEAD`）で、git差分のある `.cs` ファイルが属するアセンブリと、
+    それに依存するアセンブリ（テストアセンブリ等）のみを実行できる
+    - asmdefの参照（名前参照・GUID参照の両方）を解決して依存グラフを構築する `GitChangedAssemblyResolver` を追加
+  - 絞り込み条件に該当するテストが無い場合はフルスイートへフォールバックせず、
+    `status: "not_started"` とその理由を返す
+
 ## [1.6.0] - 2026-08-08
 
 ### Added

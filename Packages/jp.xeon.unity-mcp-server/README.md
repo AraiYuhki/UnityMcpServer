@@ -66,8 +66,8 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 | ツール名 | 説明 |
 |---------|------|
 | `check_status` | サーバーの稼働状態を確認 |
-| `run_editmode_tests` | EditModeテストの実行を開始（結果は`get_editmode_test_results`でポーリング） |
-| `run_playmode_tests` | PlayModeテストの実行を開始（結果は`get_playmode_test_results`でポーリング） |
+| `run_editmode_tests` | EditModeテストの実行を開始（結果は`get_editmode_test_results`でポーリング）。`testNames`/`groupNames`/`categoryNames`/`assemblyNames`で絞り込み、`onlyFailures`で前回の失敗・未実行のみ再実行、`changedFilesOnly`でgit差分に関連するアセンブリのみ実行できる |
+| `run_playmode_tests` | PlayModeテストの実行を開始（結果は`get_playmode_test_results`でポーリング）。フィルタオプションは`run_editmode_tests`と同じ |
 | `get_editmode_test_results` | `run_editmode_tests`の結果を取得（実行中/未実行/完了） |
 | `get_playmode_test_results` | `run_playmode_tests`の結果を取得（実行中/未実行/完了） |
 | `get_compile_errors` | 直近のコンパイルエラー・警告を取得（`state` / `isStale` 付き） |

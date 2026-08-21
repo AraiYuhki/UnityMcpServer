@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
@@ -55,6 +56,42 @@ namespace UnityMcp
             var result = JObject.Parse(json);
             result["status"] = "completed";
             return result;
+        }
+
+        /// <summary>
+        /// 直近に保存された結果から、失敗またはスキップされたテストの完全修飾名を取得する。
+        /// 保存された結果が無い場合は空リストを返す。
+        /// </summary>
+        public static List<string> GetLastNotPassedTestNames(TestMode testMode)
+        {
+            var names = new List<string>();
+            var json = SessionState.GetString(ResultKeyPrefix + testMode, string.Empty);
+            if (string.IsNullOrEmpty(json))
+            {
+                return names;
+            }
+
+            var result = JObject.Parse(json);
+            AppendStringValues(result["failures"] as JArray, names, "testName");
+            AppendStringValues(result["skippedTests"] as JArray, names, null);
+            return names;
+        }
+
+        private static void AppendStringValues(JArray array, List<string> destination, string fieldName)
+        {
+            if (array == null)
+            {
+                return;
+            }
+
+            foreach (var item in array)
+            {
+                var value = fieldName == null ? item.ToString() : item[fieldName]?.ToString();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    destination.Add(value);
+                }
+            }
         }
     }
 }

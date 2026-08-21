@@ -31,6 +31,12 @@ namespace UnityMcp
         [JsonProperty("failures")]
         public List<TestFailure> Failures { get; private set; } = new();
 
+        /// <summary>
+        /// スキップされたテストの完全修飾名。onlyFailures指定での再実行対象の特定に使う。
+        /// </summary>
+        [JsonProperty("skippedTests")]
+        public List<string> SkippedTests { get; private set; } = new();
+
         public TestResultSummary(ITestResultAdaptor result)
         {
             PassCount = result.PassCount;
@@ -40,13 +46,13 @@ namespace UnityMcp
             AllPassed = FailCount == 0;
             Summary = $"{PassCount} passed, {FailCount} failed, {SkipCount} skipped ({TotalCount} total)";
 
-            CollectFailures(result);
+            CollectResults(result);
         }
 
         /// <summary>
-        /// テスト結果ツリーを再帰的に走査し、末端の失敗テストだけをフラットに収集する
+        /// テスト結果ツリーを再帰的に走査し、末端の失敗・スキップテストをフラットに収集する
         /// </summary>
-        private void CollectFailures(ITestResultAdaptor result)
+        private void CollectResults(ITestResultAdaptor result)
         {
             if (!result.HasChildren)
             {
@@ -54,12 +60,16 @@ namespace UnityMcp
                 {
                     Failures.Add(TestFailure.FromResult(result));
                 }
+                else if (result.TestStatus == TestStatus.Skipped)
+                {
+                    SkippedTests.Add(result.FullName);
+                }
                 return;
             }
 
             foreach (var child in result.Children)
             {
-                CollectFailures(child);
+                CollectResults(child);
             }
         }
     }

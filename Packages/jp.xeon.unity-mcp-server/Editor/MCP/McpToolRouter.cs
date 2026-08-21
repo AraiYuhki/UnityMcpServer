@@ -38,11 +38,11 @@ namespace UnityMcp
             toolList.Clear();
             var editModeTestTool = new RunTests(
                 "run_editmode_tests",
-                "Start all EditMode unit tests in the Unity project using Test Runner. Call this after modifying C# scripts to verify that changes don't break existing functionality. Returns immediately once the run has started; poll 'get_editmode_test_results' for the pass/fail summary.",
+                "Start EditMode unit tests in the Unity project using Test Runner. By default runs the full suite; pass testNames/groupNames/categoryNames/assemblyNames to narrow the run, onlyFailures=true to rerun just what failed/was skipped last time, or changedFilesOnly=true to run only tests affected by uncommitted git changes. Call this after modifying C# scripts to verify that changes don't break existing functionality. Returns immediately once the run has started; poll 'get_editmode_test_results' for the pass/fail summary.",
                 TestMode.EditMode);
             var playModeTestTool = new RunTests(
                 "run_playmode_tests",
-                "Start all PlayMode integration tests in the Unity project using Test Runner. Call this to verify runtime behavior after changes to MonoBehaviour, physics, or scene logic. Returns immediately once the run has started (PlayMode entry triggers a domain reload, so the result cannot be awaited directly); poll 'get_playmode_test_results' for the pass/fail summary.",
+                "Start PlayMode integration tests in the Unity project using Test Runner. By default runs the full suite; pass testNames/groupNames/categoryNames/assemblyNames to narrow the run, onlyFailures=true to rerun just what failed/was skipped last time, or changedFilesOnly=true to run only tests affected by uncommitted git changes. Call this to verify runtime behavior after changes to MonoBehaviour, physics, or scene logic. Returns immediately once the run has started (PlayMode entry triggers a domain reload, so the result cannot be awaited directly); poll 'get_playmode_test_results' for the pass/fail summary.",
                 TestMode.PlayMode);
             var getEditModeTestResultsTool = new GetTestResults(
                 "get_editmode_test_results",

@@ -94,11 +94,51 @@ Content-Type: application/json
 EditModeテストの実行を開始します。テスト完了は待たず、開始したことだけを即座に返すため、
 結果は `get_editmode_test_results` でポーリングしてください。
 
-**リクエスト例：**
+引数を省略するとプロジェクト全体のEditModeテストが実行されます。以下のオプションで
+絞り込んだ実行も可能です（複数指定した場合はすべて `AND` ではなく合成対象として和集合を取ります）。
+
+| 引数 | 型 | 説明 |
+|------|----|------|
+| `testNames` | `string[]` | テストの完全修飾名（`FixtureName.TestName`）と完全一致するものだけ実行 |
+| `groupNames` | `string[]` | テストの完全修飾名に対する正規表現。フィクスチャや名前空間単位の絞り込みに使う（例: `"^MyNamespace\\."`） |
+| `categoryNames` | `string[]` | NUnitの `[Category]` 名で絞り込み |
+| `assemblyNames` | `string[]` | アセンブリ名（`.dll`拡張子なし）で絞り込み |
+| `onlyFailures` | `boolean` | `true`の場合、そのテストモードで直近に完了した実行で失敗・スキップされたテストのみ再実行する。対象が無い場合はテストを開始せず`status: "not_started"`を返す |
+| `changedFilesOnly` | `boolean` | `true`の場合、`gitRef`との差分（未追跡ファイル含む）から変更された`.cs`ファイルを検出し、それらが属するアセンブリと、そのアセンブリに依存するアセンブリ（テストアセンブリなど）のみを実行する。変更が無ければテストを開始せず`status: "not_started"`を返す |
+| `gitRef` | `string` | `changedFilesOnly`で比較する基準のgit参照（既定値: `"HEAD"`） |
+
+`onlyFailures` と `changedFilesOnly` は明示フィルタや互いに組み合わせられます
+（例: 変更されたアセンブリの中で前回失敗したテストだけ再実行）。
+
+**リクエスト例（全件実行）：**
 ```json
 {
   "tool": "run_editmode_tests",
   "arguments": ""
+}
+```
+
+**リクエスト例（変更箇所に関連するテストのみ）：**
+```json
+{
+  "tool": "run_editmode_tests",
+  "arguments": "{\"changedFilesOnly\":true}"
+}
+```
+
+**リクエスト例（前回の失敗・未実行のみ再実行）：**
+```json
+{
+  "tool": "run_editmode_tests",
+  "arguments": "{\"onlyFailures\":true}"
+}
+```
+
+**リクエスト例（特定のフィクスチャのみ）：**
+```json
+{
+  "tool": "run_editmode_tests",
+  "arguments": "{\"groupNames\":[\"^UnityMcp\\\\.Tests\\\\.McpToolDiscoveryTests\"]}"
 }
 ```
 
@@ -110,6 +150,14 @@ EditModeテストの実行を開始します。テスト完了は待たず、開
 }
 ```
 
+絞り込み条件に該当するテストが無い場合は、実行を開始せず以下のように返します：
+```json
+{
+  "ok": true,
+  "result": "{\"status\":\"not_started\",\"message\":\"No changed .cs files detected relative to 'HEAD'. Nothing to run.\"}"
+}
+```
+
 ### get_editmode_test_results
 
 `run_editmode_tests` で開始したテストの進行状況・結果を取得します。
@@ -118,7 +166,7 @@ EditModeテストの実行を開始します。テスト完了は待たず、開
 ```json
 {
   "ok": true,
-  "result": "{\"status\":\"completed\",\"summary\":\"5 passed, 0 failed, 0 skipped (5 total)\",\"totalCount\":5,\"passCount\":5,\"failCount\":0,\"skipCount\":0,\"allPassed\":true,\"failures\":[]}"
+  "result": "{\"status\":\"completed\",\"summary\":\"5 passed, 0 failed, 0 skipped (5 total)\",\"totalCount\":5,\"passCount\":5,\"failCount\":0,\"skipCount\":0,\"allPassed\":true,\"failures\":[],\"skippedTests\":[]}"
 }
 ```
 
@@ -127,6 +175,9 @@ EditModeテストの実行を開始します。テスト完了は待たず、開
 PlayModeテストの実行を開始します。PlayMode移行時にドメインリロードが発生し
 開始要求元のawaitが失われるため、`run_editmode_tests` と同様に開始したことだけを
 即座に返します。結果は `get_playmode_test_results` でポーリングしてください。
+
+絞り込みオプション（`testNames` / `groupNames` / `categoryNames` / `assemblyNames` /
+`onlyFailures` / `changedFilesOnly` / `gitRef`）は `run_editmode_tests` と同じです。
 
 **リクエスト例：**
 ```json
