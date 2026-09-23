@@ -12,7 +12,7 @@ Unity Editor上で動作するMCP（Model Context Protocol）サーバーです�
 
 ## 動作環境
 
-- Unity 6000.0 以上
+- Unity 6000.6 以上
 
 ## インストール
 

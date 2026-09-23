@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-09-23
+
+### Changed
+
+- **破壊的変更**: 対応Unityバージョンを 6000.6 以上に引き上げ（6000.0〜6000.5 はサポート対象外）
+  - `com.unity.2d.animation` 16.0.0 など、manifest.json 内の2D系パッケージ群が Unity 6000.6 を要求するため
+  - 動作確認済みバージョン: 6000.6.0f1
+- `TakeScreenshot` 内の `FindObjectsByType<Canvas>(FindObjectsSortMode.None)`（Unity 6000.6 で非推奨）を `FindObjectsByType<Canvas>(FindObjectsInactive.Exclude)` に変更
+
 ## [1.7.0] - 2026-08-21
 
 ### Added

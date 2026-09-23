@@ -121,7 +121,7 @@ namespace UnityMcp.Tools.Scene
             var originalCameras = new List<Camera>();
             var originalPlaneDistances = new List<float>();
 
-            foreach (var canvas in UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            foreach (var canvas in UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
             {
                 if (canvas.renderMode != RenderMode.ScreenSpaceOverlay)
                 {
