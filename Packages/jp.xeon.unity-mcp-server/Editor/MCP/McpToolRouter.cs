@@ -110,6 +110,7 @@ namespace UnityMcp
 #if MCP_UGUI
             TryRegisterTool(new SimulateUiClick());
             TryRegisterTool(new SimulateUiDrag());
+            TryRegisterTool(new SimulateUiTextInput());
 #endif
             RegisterDiscoveredTools();
         }

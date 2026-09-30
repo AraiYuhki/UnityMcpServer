@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-09-30
+
+### Added
+
+- `simulate_ui_text_input` ツールを追加
+  - uGUIの `InputField` / `TMP_InputField`（TextMeshPro導入時、リフレクション経由）へ
+    テキストを直接設定する。`text` プロパティを書き換えて `onValueChanged` を発火させ、
+    `submit: true` で `onEndEdit`/`onSubmit` も呼べる
+  - `simulate_keyboard` は Input System の低レベルAPI経由のため、エディタウィンドウが
+    OSフォーカスを持たない自動化環境（本サーバーの典型的な利用形態）ではプレイヤーループが
+    進まずキー入力が反映されないことがある（`docs/MCP_INPUT_EMULATION_REPORT.md` 参照）。
+    このツールはウィンドウフォーカスやInput Systemのルーティングに依存せず、
+    日本語などIME入力が必要な文字列でも確実に入力欄へ反映できる
+
 ## [2.0.0] - 2026-09-23
 
 ### Changed
