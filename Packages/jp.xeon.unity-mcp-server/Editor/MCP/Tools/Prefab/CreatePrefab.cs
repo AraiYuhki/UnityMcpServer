@@ -17,14 +17,18 @@ namespace UnityMcp.Tools.Prefab
 
         public string Description =>
             "Create a new Prefab asset from a GameObject in the current scene. " +
-            "The original scene GameObject remains unchanged. " +
+            "By default the original scene GameObject remains unchanged (a disconnected copy is saved as the " +
+            "asset). Pass connect=true to instead behave like dragging the GameObject into the Project window: " +
+            "the scene GameObject itself becomes a connected instance of the new Prefab (blue-linked), matching " +
+            "the usual Editor 'turn into Prefab' workflow. " +
             "Specify the source GameObject by its hierarchy path and the destination asset path for the Prefab. " +
             "Use get_scene_hierarchy to find the correct hierarchy path.";
 
         public string InputSchema =>
             "{\"type\":\"object\",\"properties\":{" +
             "\"gameObjectPath\":{\"type\":\"string\",\"description\":\"Hierarchy path of the source GameObject in the scene (e.g. 'Canvas/Panel/Button')\"}," +
-            "\"savePath\":{\"type\":\"string\",\"description\":\"Asset path to save the Prefab (e.g. 'Assets/Prefabs/Player.prefab'). Must end with '.prefab'.\"}" +
+            "\"savePath\":{\"type\":\"string\",\"description\":\"Asset path to save the Prefab (e.g. 'Assets/Prefabs/Player.prefab'). Must end with '.prefab'.\"}," +
+            "\"connect\":{\"type\":\"boolean\",\"description\":\"If true, connect the scene GameObject to the new Prefab as an instance (like dragging into the Project window) instead of leaving it as a disconnected copy. Default: false.\",\"default\":false}" +
             "},\"required\":[\"gameObjectPath\",\"savePath\"]}";
 
         public Task<object> Execute(string args)
@@ -44,14 +48,29 @@ namespace UnityMcp.Tools.Prefab
                 Directory.CreateDirectory(directory);
             }
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, parameters.SavePath, out var success);
+            var prefab = SavePrefab(go, parameters.SavePath, parameters.Connect, out var success);
             if (!success || prefab == null)
             {
                 throw new InvalidOperationException($"Failed to create Prefab at '{parameters.SavePath}'.");
             }
 
-            var result = new CreatePrefabResult(parameters.SavePath, go.name);
+            if (parameters.Connect)
+            {
+                EditorSceneManager.MarkSceneDirty(go.scene);
+            }
+
+            var result = new CreatePrefabResult(parameters.SavePath, go.name, parameters.Connect);
             return Task.FromResult<object>(result);
+        }
+
+        private static GameObject SavePrefab(GameObject go, string savePath, bool connect, out bool success)
+        {
+            if (connect)
+            {
+                return PrefabUtility.SaveAsPrefabAssetAndConnect(go, savePath, InteractionMode.AutomatedAction, out success);
+            }
+
+            return PrefabUtility.SaveAsPrefabAsset(go, savePath, out success);
         }
 
         private static CreatePrefabArgs ParseArgs(string args)
@@ -122,6 +141,9 @@ namespace UnityMcp.Tools.Prefab
 
         [JsonProperty("savePath")]
         public string SavePath { get; set; } = string.Empty;
+
+        [JsonProperty("connect")]
+        public bool Connect { get; set; }
     }
 
     internal class CreatePrefabResult
@@ -132,14 +154,20 @@ namespace UnityMcp.Tools.Prefab
         [JsonProperty("gameObjectName")]
         public string GameObjectName { get; private set; }
 
+        [JsonProperty("connected")]
+        public bool Connected { get; private set; }
+
         [JsonProperty("message")]
         public string Message { get; private set; }
 
-        public CreatePrefabResult(string savePath, string gameObjectName)
+        public CreatePrefabResult(string savePath, string gameObjectName, bool connected)
         {
             SavePath = savePath;
             GameObjectName = gameObjectName;
-            Message = $"Prefab created at '{savePath}' from GameObject '{gameObjectName}'.";
+            Connected = connected;
+            Message = connected
+                ? $"Prefab created at '{savePath}' and the scene GameObject '{gameObjectName}' is now a connected instance of it."
+                : $"Prefab created at '{savePath}' from GameObject '{gameObjectName}'.";
         }
     }
 }

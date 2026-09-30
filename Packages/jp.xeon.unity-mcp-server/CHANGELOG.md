@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-30
+
+### Added
+
+- `create_prefab` に `connect`（既定false）を追加
+  - `true` を指定すると、Project ウィンドウへのドラッグ&ドロップと同じ挙動になる
+    （`PrefabUtility.SaveAsPrefabAssetAndConnect`）。シーン側のGameObjectが新規Prefabへ
+    接続済みのインスタンス（青リンク）になり、シーンを変更済みとしてマークする
+  - 既定値は従来どおり `PrefabUtility.SaveAsPrefabAsset`（非接続のコピーを保存するだけ、
+    シーン側は変更しない）のまま
+
 ## [2.1.1] - 2026-09-30
 
 ### Fixed
