@@ -1,0 +1,14 @@
+name: UnityMcpServer-unity-autoupdate
+
+env:
+  UNITY_TARGET_VERSION: $UNITY_TARGET_VERSION
+  UNITY_AUTOUPDATE_ROOT: $UNITY_AUTOUPDATE_ROOT
+  REPO_KEY: $REPO_KEY
+  REPO_PACKAGE_JSON_PATH: $REPO_PACKAGE_JSON_PATH
+
+jobs:
+  build:
+    shell: true
+    timeout: 5400
+    script:
+      - pwsh -NoProfile -ExecutionPolicy Bypass -File %UNITY_AUTOUPDATE_ROOT%\lib\Invoke-RepoUpgrade.ps1 -RepoPath . -RepoKey %REPO_KEY% -UnityVersion %UNITY_TARGET_VERSION% -PackageJsonPath %REPO_PACKAGE_JSON_PATH%

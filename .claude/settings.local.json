@@ -6,7 +6,18 @@
       "mcp__jetbrains__list_directory_tree",
       "mcp__jetbrains__get_file_text_by_path",
       "mcp__unity-mcp__check_status",
-      "mcp__jetbrains__get_file_problems"
+      "mcp__jetbrains__get_file_problems",
+      "mcp__unity-mcp__get_compile_errors",
+      "mcp__unity-mcp__run_editmode_tests",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh release *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git tag *)",
+      "Bash(gh release create v1.2.0 --title v1.2.0 --notes ' *)",
+      "Bash(xargs -I{} echo {})",
+      "PowerShell(claude *)"
     ]
   },
   "enableAllProjectMcpServers": true,

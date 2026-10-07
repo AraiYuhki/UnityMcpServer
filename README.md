@@ -132,3 +132,8 @@ MIT OR Apache-2.0
 ## 作者
 
 Xeon ([@AraiYuhki](https://github.com/AraiYuhki))
+
+## 対応Unityバージョン
+
+- 動作確認済み最新バージョン: 6000.6.4f1
+- 最低対応バージョン: 6000.6.0f1

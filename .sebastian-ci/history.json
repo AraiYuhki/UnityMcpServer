@@ -1,0 +1,15 @@
+{
+  "25a8c572c261d151d48fe56867cc08c8aff89b04": {
+    "executedAt": "2026-10-07T14:15:04.6476705+09:00",
+    "isSuccess": false,
+    "logDirectoryPath": "D:\\Projects\\UnityMcpServer\\.sebastian-ci\\logs\\25a8c572c261d151d48fe56867cc08c8aff89b04",
+    "jobs": [
+      {
+        "jobId": "build",
+        "status": "Failed",
+        "durationSeconds": 508.1,
+        "tests": null
+      }
+    ]
+  }
+}
