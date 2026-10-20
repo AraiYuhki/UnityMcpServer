@@ -14,8 +14,16 @@ namespace UnityMcp.Tools.Compile
             string[] importedAssets,
             string[] deletedAssets,
             string[] movedAssets,
-            string[] movedFromAssetPaths)
+            string[] movedFromAssetPaths,
+            bool didDomainReload)
         {
+            // ドメインリロード直後（プロジェクト起動時を含む）の通知は、コンパイル済みスクリプトの
+            // 再インポートに過ぎず、新たなコンパイルは発生しないため Pending にしてはならない
+            if (didDomainReload)
+            {
+                return;
+            }
+
             if (!ContainsScript(importedAssets) &&
                 !ContainsScript(deletedAssets) &&
                 !ContainsScript(movedAssets))

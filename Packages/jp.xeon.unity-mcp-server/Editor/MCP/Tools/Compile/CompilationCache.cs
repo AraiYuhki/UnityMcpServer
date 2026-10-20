@@ -212,6 +212,13 @@ namespace UnityMcp.Tools.Compile
             }
 
             RestoreMessages();
+
+            // ドメインがロードできた時点でスクリプトのコンパイルは成立しているため、
+            // リロード前に残った Pending は解消する（Compiling は Reconcile が補正する）
+            if (LoadState() == CompileState.Pending)
+            {
+                StoreState(CompileState.Completed);
+            }
         }
 
         private static void RestoreMessages()

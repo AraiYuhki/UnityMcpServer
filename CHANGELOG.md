@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-20
+
+### Fixed
+- プロジェクト起動・ドメインリロード後、コンパイル完了済みにもかかわらず `compileState` が `pending` のまま残る問題を修正
+  - ドメインリロード直後の `OnPostprocessAllAssets`（`didDomainReload == true`）をPending化の対象から除外
+  - リロードを跨いで残ったPendingを、リロード後の復元時に完了へ解消
+
 
 ## [2.5.0] - 2026-10-18
 
