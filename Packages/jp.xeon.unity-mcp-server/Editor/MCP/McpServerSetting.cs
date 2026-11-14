@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using UnityEditor;
+using UnityEngine;
 
 namespace UnityMcp
 {
@@ -15,5 +16,14 @@ namespace UnityMcp
         [SerializeField] private int port = 7000;
 
         public int Port => port;
+
+        /// <summary>
+        /// ポート番号を変更する。アセットの保存は呼び出し側で行う。
+        /// </summary>
+        public void SetPort(int value)
+        {
+            port = value;
+            EditorUtility.SetDirty(this);
+        }
     }
 }

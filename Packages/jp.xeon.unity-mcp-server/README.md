@@ -55,6 +55,12 @@ https://github.com/AraiYuhki/UnityMcpServer.git?path=Packages/jp.xeon.unity-mcp-
 2. `Create` > `MCPServerSetting` を選択
 3. 作成されたアセットでポート番号を設定
 
+#### ポート番号をランダムに変更する
+
+複数のUnityエディタを同時に開いてポートが競合する場合は、メニューの `Tools` > `Randomize MCP Server Port` を実行してください。
+使用中のポートを避けて 10000〜49151 からランダムに選択し、設定に保存してサーバーを自動で再起動します。
+プロジェクト直下の `.mcp.json` に `unity-mcp` のエントリがある場合はURLも更新されるため、MCPクライアントを再接続してください。
+
 ### サーバーのリスタート
 
 ポート番号を変更した場合など、サーバーを再起動したい場合は：
